@@ -1,0 +1,9 @@
+{
+  "name": "connector-inventory",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {},
+  "dependencies": {
+    "googleapis": "^130.0.0"
+  }
+}
