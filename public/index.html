@@ -727,20 +727,23 @@
   </div>
 
   <script>
-  // === CONFIG ===
-  const DATA_URL = "/.netlify/functions/get-connectors"; // Netlify Function
+  // Netlify Function for loading inventory data
+  const DATA_URL = "/.netlify/functions/get-connectors";
+
+  // Keep Apps Script for "Request this connector" (for now)
   const REQUEST_URL =
     "https://script.google.com/macros/s/AKfycbzQISzKogNh6a9h3x4Ei6nVK2hYRQkUJNpra0YTY4KcrPDeamps-4rAm67NhMId_DAj/exec";
   const STORAGE_KEY = "connectorInventoryFiltersV1";
 
-  // === STATE ===
+  // To keep the DOM light: only render this many rows at once
+  const MAX_ROWS_TO_RENDER = 300;
+
   let connectorData = [];
   let currentSort = { key: "partNumber", dir: "asc" };
   let selectedItem = null;
   let openDetailsRow = null;
   let openExpander = null;
 
-  // === DOM ELEMENTS ===
   const searchInput = document.getElementById("searchInput");
   const clearSearchBtn = document.getElementById("clearSearchBtn");
   const locationFilter = document.getElementById("locationFilter");
@@ -764,37 +767,35 @@
   const oemLabel = document.getElementById("oemLabel");
 
   const multiState = {
-    category: new Set(), // Type (Col N)
-    pins: new Set(), // Pins (Col M)
-    gender: new Set(), // Gender (Col L)
-    termSize: new Set(), // Terminal Sizes (Col AP)
-    manufacturer: new Set(), // Supplier (Col Q)
-    oem: new Set(), // OEMs (R–V)
+    category: new Set(),
+    pins: new Set(),
+    gender: new Set(),
+    termSize: new Set(),
+    manufacturer: new Set(),
+    oem: new Set(),
   };
-
-  // === HELPERS ===
-
-  function normalize(str) {
-    return String(str || "")
-      .toLowerCase()
-      .replace(/\s+/g, " ")
-      .trim();
-  }
-
-  // Normalize gender cell so "M", "Male", "m" all become "male", etc.
-  function normalizeGenderCell(value) {
-    const v = normalize(value);
-    if (!v) return "";
-    if (v.includes("m & f")) return "m & f";
-    if (v === "m" || v.startsWith("male")) return "male";
-    if (v === "f" || v.startsWith("female")) return "female";
-    return v;
-  }
 
   function qtyClass(qty) {
     if (qty <= 0) return "qty-zero";
     if (qty <= 3) return "qty-low";
     return "qty-ok";
+  }
+
+  function normalize(str) {
+    return String(str || "").toLowerCase().replace(/\s+/g, " ").trim();
+  }
+
+  function normalizeGenderValue(raw) {
+    const v = normalize(raw);
+    if (!v) return "";
+    if (v.includes("m & f")) return "m & f";
+    // "M/F", "M F", etc
+    if (v.includes("m") && v.includes("f") && !v.includes("male") && !v.includes("female")) {
+      return "m & f";
+    }
+    if (v.startsWith("m")) return "male";    // M, MALE
+    if (v.startsWith("f")) return "female"; // F, FEMALE
+    return v;
   }
 
   function updateMultiLabel(filterName) {
@@ -827,8 +828,6 @@
         labelEl = oemLabel;
         placeholderText = "Any";
         break;
-      default:
-        return;
     }
 
     const toggle = document.querySelector(
@@ -869,7 +868,7 @@
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     } catch (e) {
-      // ignore storage errors
+      // ignore
     }
   }
 
@@ -879,52 +878,49 @@
 
     const catsSelected = Array.from(multiState.category).map(normalize);
     const pinsSelected = Array.from(multiState.pins).map((v) => String(v));
-    const gendersSelected = Array.from(multiState.gender).map(normalize);
+    const gendersSelected = Array.from(multiState.gender).map(normalizeGenderValue);
     const termSizesSelected = Array.from(multiState.termSize).map(String);
     const mfrSelected = Array.from(multiState.manufacturer).map(normalize);
     const oemSelected = Array.from(multiState.oem).map(normalize);
-
     const hasPic = hasPictureCheckbox.checked;
 
     let filtered = connectorData.filter((item) => {
-      // 1. Text search
+      // Free-text search
       if (search) {
         const haystack = normalize(
           [
             item.partNumber,
             item.description,
-            item.altNumber,
             item.vehicle,
             item.shop,
             item.van,
             item.manufacturer,
             item.gender,
             item.terminalSizes,
-            item.passNumber,
           ].join(" ")
         );
         if (!haystack.includes(search)) return false;
       }
 
-      // 2. Type (Col N mapped to item.category)
+      // Type (Col N)
       if (catsSelected.length) {
         const catNorm = normalize(item.category);
         if (!catsSelected.includes(catNorm)) return false;
       }
 
-      // 3. Pins (Stats!A2:A options, filters Col M → item.pins)
+      // Pins (Stats!A2:A → Col M)
       if (pinsSelected.length) {
         const pinsStr = String(item.pins ?? "");
         if (!pinsSelected.includes(pinsStr)) return false;
       }
 
-      // 4. Gender (Col L) with normalized matching
+      // Gender (Col L)
       if (gendersSelected.length) {
-        const gNorm = normalizeGenderCell(item.gender);
+        const gNorm = normalizeGenderValue(item.gender);
         if (!gendersSelected.includes(gNorm)) return false;
       }
 
-      // 5. Terminal Sizes (Col AP, possibly multiple values)
+      // Terminal Size (Col AP, comma/space separated)
       if (termSizesSelected.length) {
         const raw = String(item.terminalSizes || "");
         const tokens = raw
@@ -935,25 +931,25 @@
         if (!tokens.some((t) => termSizesSelected.includes(t))) return false;
       }
 
-      // 6. Location (Shop + Van; H + J)
+      // Location (Shop or Van): Columns H & J
       if (loc) {
         const combinedLoc = normalize((item.shop || "") + " " + (item.van || ""));
         if (!combinedLoc.includes(loc)) return false;
       }
 
-      // 7. Supplier (Col Q)
+      // Supplier (Stats!E2:E → Col Q)
       if (mfrSelected.length) {
         const mfNorm = normalize(item.manufacturer);
         if (!mfrSelected.includes(mfNorm)) return false;
       }
 
-      // 8. Vehicle / OEM (Ford, GM, HyundaiKia, Nissan, Toyota columns R–V)
+      // Vehicle / OEM (Ford, GM, HyundaiKia, Nissan, Toyota in R–V)
       if (oemSelected.length) {
         const itemOems = (item.oems || []).map((o) => normalize(o));
         if (!oemSelected.some((sel) => itemOems.includes(sel))) return false;
       }
 
-      // 9. Pic only
+      // Pic only
       if (hasPic) {
         if (!(item.picture && /^https?:\/\//.test(item.picture))) return false;
       }
@@ -961,11 +957,11 @@
       return true;
     });
 
-    // Sorting
+    // Sort
     filtered.sort((a, b) => {
       const { key, dir } = currentSort;
-      let va = a[key];
-      let vb = b[key];
+      let va = a[key],
+        vb = b[key];
 
       if (key === "pins") {
         va = Number(va) || 0;
@@ -980,7 +976,9 @@
       return 0;
     });
 
-    renderResults(filtered);
+    // Limit rendered rows to keep memory reasonable
+    const toRender = filtered.slice(0, MAX_ROWS_TO_RENDER);
+    renderResults(toRender, filtered.length);
     saveFilters();
   }
 
@@ -1008,20 +1006,13 @@
       block.appendChild(titleEl);
       if (main) block.appendChild(mainEl);
       if (sub) block.appendChild(subEl);
+
       return block;
     };
 
     // Row 1: Terminal 1, Terminal 2, Mating, Price
-    const t1 = makeBlock(
-      "TERMINAL 1",
-      details.terminal1Code,
-      details.terminal1Range
-    );
-    const t2 = makeBlock(
-      "TERMINAL 2",
-      details.terminal2Code,
-      details.terminal2Range
-    );
+    const t1 = makeBlock("TERMINAL 1", details.terminal1Code, details.terminal1Range);
+    const t2 = makeBlock("TERMINAL 2", details.terminal2Code, details.terminal2Range);
     const mating = makeBlock("MATING", details.mating || "", "");
 
     let priceText = "";
@@ -1032,20 +1023,15 @@
     }
     const price = makeBlock("PRICE", priceText, "");
 
-    [t1, t2, mating, price].forEach((b) => {
-      if (b) grid.appendChild(b);
-    });
+    [t1, t2, mating, price].forEach((b) => b && grid.appendChild(b));
 
-    // Row 2: OEM flags
+    // Row 2: OEM columns
     const ford = makeBlock("FORD", details.ford || "", "");
     const gm = makeBlock("GM", details.gm || "", "");
     const hk = makeBlock("HYUNDAI/KIA", details.hyundaiKia || "", "");
     const nissan = makeBlock("NISSAN", details.nissan || "", "");
     const toyota = makeBlock("TOYOTA", details.toyota || "", "");
-
-    [ford, gm, hk, nissan, toyota].forEach((b) => {
-      if (b) grid.appendChild(b);
-    });
+    [ford, gm, hk, nissan, toyota].forEach((b) => b && grid.appendChild(b));
 
     if (!grid.children.length) {
       const empty = document.createElement("div");
@@ -1063,13 +1049,13 @@
     actionBar.style.display = "flex";
     actionStatus.textContent = "";
 
-    document
-      .querySelectorAll(".data-row.selected-row")
-      .forEach((r) => r.classList.remove("selected-row"));
+    document.querySelectorAll(".data-row.selected-row").forEach((r) => {
+      r.classList.remove("selected-row");
+    });
     if (rowEl) rowEl.classList.add("selected-row");
   }
 
-  function renderResults(data) {
+  function renderResults(data, totalCount) {
     resultsBody.innerHTML = "";
 
     if (!data.length) {
@@ -1118,18 +1104,17 @@
       tdPart.textContent = item.partNumber || "";
       tr.appendChild(tdPart);
 
-      // Description (O + P combined in backend)
+      // Description
       const tdDesc = document.createElement("td");
       tdDesc.textContent = item.description || "";
       tr.appendChild(tdDesc);
 
-      // Shop (H)
+      // Shop
       const tdShop = document.createElement("td");
       tdShop.textContent = item.shop || "";
       tdShop.className = "shop-cell";
       tr.appendChild(tdShop);
 
-      // Shop Qty (I)
       const tdShopQty = document.createElement("td");
       const shopPill = document.createElement("span");
       shopPill.className = `qty-pill ${qtyClass(item.shopQty)}`;
@@ -1138,13 +1123,12 @@
       tdShopQty.className = "shop-qty";
       tr.appendChild(tdShopQty);
 
-      // Van (J)
+      // Van
       const tdVan = document.createElement("td");
       tdVan.textContent = item.van || "";
       tdVan.className = "van-cell";
       tr.appendChild(tdVan);
 
-      // Van Qty (K)
       const tdVanQty = document.createElement("td");
       const vanPill = document.createElement("span");
       const vanQty = item.vanQty;
@@ -1154,12 +1138,12 @@
       tdVanQty.className = "van-qty";
       tr.appendChild(tdVanQty);
 
-      // Pins (M)
+      // Pins
       const tdPins = document.createElement("td");
       tdPins.textContent = item.pins || "";
       tr.appendChild(tdPins);
 
-      // Type (N)
+      // Type
       const tdType = document.createElement("td");
       const tag = document.createElement("span");
       tag.className = "tag";
@@ -1167,16 +1151,14 @@
       tdType.appendChild(tag);
       tr.appendChild(tdType);
 
-      // Gender (L) displayed as M / F / M&F
+      // Gender
       const tdGender = document.createElement("td");
-      const gNorm = normalizeGenderCell(item.gender);
-      if (gNorm === "male") tdGender.textContent = "M";
-      else if (gNorm === "female") tdGender.textContent = "F";
-      else if (gNorm === "m & f") tdGender.textContent = "M/F";
-      else tdGender.textContent = item.gender || "";
+      const gNorm = normalizeGenderValue(item.gender);
+      tdGender.textContent =
+        gNorm === "female" ? "F" : gNorm === "male" ? "M" : gNorm.toUpperCase();
       tr.appendChild(tdGender);
 
-      // Supplier (Q)
+      // Supplier
       const tdMfr = document.createElement("td");
       tdMfr.textContent = item.manufacturer || "";
       tr.appendChild(tdMfr);
@@ -1230,9 +1212,13 @@
       resultsBody.appendChild(detailsTr);
     });
 
-    resultsCount.textContent = `Showing ${data.length} item${
-      data.length !== 1 ? "s" : ""
-    }`;
+    if (totalCount > data.length) {
+      resultsCount.textContent = `Showing first ${data.length} of ${totalCount} items (refine filters to see more).`;
+    } else {
+      resultsCount.textContent = `Showing ${data.length} item${
+        data.length !== 1 ? "s" : ""
+      }`;
+    }
   }
 
   function wireMultiDropdowns() {
@@ -1290,7 +1276,6 @@
           if (!set) return;
           if (cb.checked) set.add(val);
           else set.delete(val);
-
           updateMultiLabel(filterName);
           applyFilters();
         });
@@ -1316,9 +1301,9 @@
       `.multi-select-menu[data-filter-menu="${filterName}"]`
     );
     if (menu) {
-      menu
-        .querySelectorAll('input[type="checkbox"]')
-        .forEach((cb) => (cb.checked = false));
+      menu.querySelectorAll('input[type="checkbox"]').forEach((cb) => {
+        cb.checked = false;
+      });
     }
     updateMultiLabel(filterName);
   }
@@ -1361,7 +1346,6 @@
       }
 
       hasPictureCheckbox.checked = !!state.hasPicture;
-
       applyFilters();
     } catch (e) {
       applyFilters();
@@ -1389,61 +1373,53 @@
 
       connectorData = data.items;
 
-      // Pin options: Stats!A2:A
+      // Pin count options
       if (Array.isArray(data.pinOptions)) {
         const pinsMenu = document.querySelector(
           '.multi-select-menu[data-filter-menu="pins"]'
         );
-        if (pinsMenu) {
-          const header = pinsMenu.querySelector(".multi-select-menu-header");
-          pinsMenu.innerHTML = "";
-          if (header) pinsMenu.appendChild(header);
-
-          const pinsSorted = [...data.pinOptions].sort((a, b) => {
-            const na = Number(a);
-            const nb = Number(b);
-            if (!isNaN(na) && !isNaN(nb)) return na - nb;
-            return String(a).localeCompare(String(b));
-          });
-
-          pinsSorted.forEach((val) => {
-            if (!val) return;
-            const label = document.createElement("label");
-            const cb = document.createElement("input");
-            cb.type = "checkbox";
-            cb.value = val;
-            label.appendChild(cb);
-            label.appendChild(document.createTextNode(" " + val));
-            pinsMenu.appendChild(label);
-          });
-        }
+        const header = pinsMenu.querySelector(".multi-select-menu-header");
+        pinsMenu.innerHTML = "";
+        if (header) pinsMenu.appendChild(header);
+        const pinsSorted = [...data.pinOptions].sort((a, b) => {
+          const na = Number(a),
+            nb = Number(b);
+          if (!isNaN(na) && !isNaN(nb)) return na - nb;
+          return String(a).localeCompare(String(b));
+        });
+        pinsSorted.forEach((val) => {
+          if (!val) return;
+          const label = document.createElement("label");
+          const cb = document.createElement("input");
+          cb.type = "checkbox";
+          cb.value = val;
+          label.appendChild(cb);
+          label.appendChild(document.createTextNode(" " + val));
+          pinsMenu.appendChild(label);
+        });
       }
 
-      // Supplier options: Stats!E2:E
+      // Supplier options
       if (Array.isArray(data.manufacturerOptions)) {
         const mMenu = document.querySelector(
           '.multi-select-menu[data-filter-menu="manufacturer"]'
         );
-        if (mMenu) {
-          const header = mMenu.querySelector(".multi-select-menu-header");
-          mMenu.innerHTML = "";
-          if (header) mMenu.appendChild(header);
-
-          const mfrSorted = [...data.manufacturerOptions].sort((a, b) =>
-            String(a).localeCompare(String(b))
-          );
-
-          mfrSorted.forEach((val) => {
-            if (!val) return;
-            const label = document.createElement("label");
-            const cb = document.createElement("input");
-            cb.type = "checkbox";
-            cb.value = val;
-            label.appendChild(cb);
-            label.appendChild(document.createTextNode(" " + val));
-            mMenu.appendChild(label);
-          });
-        }
+        const header = mMenu.querySelector(".multi-select-menu-header");
+        mMenu.innerHTML = "";
+        if (header) mMenu.appendChild(header);
+        const mfrSorted = [...data.manufacturerOptions].sort((a, b) =>
+          String(a).localeCompare(String(b))
+        );
+        mfrSorted.forEach((val) => {
+          if (!val) return;
+          const label = document.createElement("label");
+          const cb = document.createElement("input");
+          cb.type = "checkbox";
+          cb.value = val;
+          label.appendChild(cb);
+          label.appendChild(document.createTextNode(" " + val));
+          mMenu.appendChild(label);
+        });
       }
 
       wireMultiCheckboxes();
@@ -1463,7 +1439,7 @@
     }
   }
 
-  // === ACTION: "Request this connector" ===
+  // Request connector via hidden iframe
   runActionBtn.addEventListener("click", () => {
     if (!selectedItem) {
       actionStatus.textContent = "Select a connector first.";
@@ -1507,7 +1483,6 @@
     }
   });
 
-  // === WIRING EVENTS ===
   const debouncedApply = debounce(applyFilters, 250);
   searchInput.addEventListener("input", debouncedApply);
   locationFilter.addEventListener("input", applyFilters);
@@ -1540,7 +1515,6 @@
     });
   });
 
-  // === INIT ===
   wireMultiDropdowns();
   loadData();
 </script>
