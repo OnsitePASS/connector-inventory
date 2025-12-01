@@ -1,26 +1,26 @@
 // netlify/functions/get-connectors.js
 const { google } = require("googleapis");
 
-// Force a direct Google Drive image URL that works in <img>
+// Build a direct Google Drive image URL that works in <img>
 function toDriveDirect(url) {
   if (!url) return "";
   let str = String(url).trim();
 
-  // Strip any surrounding quotes
+  // Strip any wrapping quotes
   str = str.replace(/^['"]+|['"]+$/g, "");
 
-  // Try to extract the file ID from ?id= or /d/ formats
+  // Extract file ID from ?id= or /d/ formats
   const m =
     str.match(/[?&]id=([a-zA-Z0-9_-]+)/) ||
     str.match(/\/d\/([a-zA-Z0-9_-]+)/);
 
   if (!m) {
-    // Not a recognizable Drive URL, just return as-is
+    // Not a drive URL we understand – just return as-is
     return str;
   }
 
   const id = m[1];
-  // Direct content host that works well for images
+  // Direct content host that works in <img> without redirects
   return `https://drive.usercontent.google.com/uc?id=${id}&export=view`;
 }
 
@@ -37,8 +37,17 @@ exports.handler = async function (event) {
       return { statusCode: 405, body: "Method Not Allowed" };
     }
 
-    const creds = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON);
+    // ---- Auth + Sheets client ----
+    const credsJson = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
     const spreadsheetId = process.env.SHEETS_SPREADSHEET_ID;
+
+    if (!credsJson || !spreadsheetId) {
+      throw new Error(
+        "Missing GOOGLE_SERVICE_ACCOUNT_JSON or SHEETS_SPREADSHEET_ID env vars"
+      );
+    }
+
+    const creds = JSON.parse(credsJson);
     const mainRange =
       process.env.SHEETS_RANGE || "'Connector Inventory'!A2:AZ";
 
@@ -49,20 +58,23 @@ exports.handler = async function (event) {
 
     const sheets = google.sheets({ version: "v4", auth });
 
+    // ---- Fetch data ----
     const response = await sheets.spreadsheets.values.batchGet({
       spreadsheetId,
       ranges: [
         mainRange,
-        "Stats!A2:A", // Pin counts
-        "Stats!E2:E", // Supplier list
+        "Stats!A2:A", // pin counts
+        "Stats!E2:E", // suppliers
       ],
     });
 
-    const rows = response.data.valueRanges[0].values || [];
-    const pinStatsRows = response.data.valueRanges[1].values || [];
-    const supplierStatsRows = response.data.valueRanges[2].values || [];
+    const vr = response.data.valueRanges || [];
 
-    // Column index mapping (0-based)
+    const rows = (vr[0] && vr[0].values) || [];
+    const pinStatsRows = (vr[1] && vr[1].values) || [];
+    const supplierStatsRows = (vr[2] && vr[2].values) || [];
+
+    // ---- Column map (0-based) ----
     const COL = {
       partNumber: 1,     // B
       shop: 7,           // H
@@ -98,16 +110,17 @@ exports.handler = async function (event) {
       picture: 42,       // AQ
     };
 
-    // Build item objects, skipping totally empty spacer rows
+    // ---- Build items ----
     const items = rows
       .map((row) => {
-        const get = (i) => (row[i] !== undefined ? row[i] : "");
+        const get = (i) => (row && row[i] !== undefined ? row[i] : "");
 
         const partNumber = get(COL.partNumber);
         const desc1 = get(COL.desc1);
         const desc2 = get(COL.desc2);
         const description = [desc1, desc2].filter(Boolean).join(" ");
 
+        // Skip spacer / fully empty rows
         const hasData =
           partNumber ||
           description ||
@@ -169,14 +182,13 @@ exports.handler = async function (event) {
       })
       .filter(Boolean); // drop nulls
 
-    // Pin count options (Stats!A2:A)
+    // ---- Dropdown options ----
     const pinOptions = pinStatsRows
       .map((r) => r[0])
       .filter(Boolean)
       .filter((v, i, arr) => arr.indexOf(v) === i)
       .sort((a, b) => Number(a) - Number(b));
 
-    // Supplier dropdown options (Stats!E2:E)
     const manufacturerOptions = supplierStatsRows
       .map((r) => r[0])
       .filter(Boolean)
