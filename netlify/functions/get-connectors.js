@@ -1,81 +1,34 @@
 // netlify/functions/get-connectors.js
 const { google } = require("googleapis");
 
-// Force a direct Google Drive image URL
+// Force a direct Google Drive image URL that works in <img>
 function toDriveDirect(url) {
   if (!url) return "";
-  const str = String(url).trim();
+  let str = String(url).trim();
 
-  // Try to extract the file ID from either ?id=... or /d/.../ style
+  // Strip any surrounding quotes
+  str = str.replace(/^['"]+|['"]+$/g, "");
+
+  // Try to extract the file ID from ?id= or /d/ formats
   const m =
     str.match(/[?&]id=([a-zA-Z0-9_-]+)/) ||
     str.match(/\/d\/([a-zA-Z0-9_-]+)/);
 
   if (!m) {
-    return str; // not a drive URL we know, just return as-is
+    // Not a recognizable Drive URL, just return as-is
+    return str;
   }
 
   const id = m[1];
-  // Direct file content host that works well in <img>
+  // Direct content host that works well for images
   return `https://drive.usercontent.google.com/uc?id=${id}&export=view`;
 }
-
 
 // Convert "Terminals #1-8" → "T:1-8"
 function formatTermRange(raw) {
   if (!raw) return "";
   const match = String(raw).match(/#\s*(\d+\s*-\s*\d+)/);
   return match ? `T:${match[1].replace(/\s+/g, "")}` : String(raw);
-}
-
-// Convert whatever is in AQ into a clean, embeddable Google Drive image URL
-function normalizeDriveUrl(raw) {
-  if (!raw) return "";
-  let str = String(raw).trim();
-
-  // Strip surrounding quotes if someone stored it as "https://..."
-  str = str.replace(/^['"]+|['"]+$/g, "");
-
-  // If it's not a Drive URL, just return as-is
-  if (!str.includes("drive.google.com")) return str;
-
-  // Try to extract the file ID from several common formats
-  let id = null;
-
-  // Format: ...uc?export=view&id=FILE_ID...
-  const idParamMatch = str.match(/[?&]id=([^&]+)/);
-  if (idParamMatch) {
-    id = idParamMatch[1];
-  }
-
-  // Format: .../file/d/FILE_ID/view...
-  if (!id) {
-    const fileMatch = str.match(/\/file\/d\/([^/]+)/);
-    if (fileMatch) {
-      id = fileMatch[1];
-    }
-  }
-
-  // If we still couldn't find an ID, just return the original string
-  if (!id) return str;
-
-  // Return a normalized direct-view URL
-  return `https://drive.google.com/uc?export=view&id=${id}`;
-  // If you prefer a smaller thumbnail instead, you can use:
-  // return `https://drive.google.com/thumbnail?id=${id}&sz=w400`;
-}
-
-
-// Turn "https://drive.google.com/file/d/ID/view?..." into
-// "https://drive.google.com/uc?export=view&id=ID"
-function normalizeDriveUrl(url) {
-  if (!url) return "";
-  const str = String(url);
-  const m = str.match(/https:\/\/drive\.google\.com\/file\/d\/([^/]+)/);
-  if (m && m[1]) {
-    return `https://drive.google.com/uc?export=view&id=${m[1]}`;
-  }
-  return str;
 }
 
 exports.handler = async function (event) {
@@ -145,96 +98,85 @@ exports.handler = async function (event) {
       picture: 42,       // AQ
     };
 
-    const items = [];
+    // Build item objects, skipping totally empty spacer rows
+    const items = rows
+      .map((row) => {
+        const get = (i) => (row[i] !== undefined ? row[i] : "");
 
-    for (const row of rows) {
-      const get = (i) => (row[i] !== undefined ? row[i] : "");
+        const partNumber = get(COL.partNumber);
+        const desc1 = get(COL.desc1);
+        const desc2 = get(COL.desc2);
+        const description = [desc1, desc2].filter(Boolean).join(" ");
 
-      const partNumber = get(COL.partNumber);
-      const desc1 = get(COL.desc1);
-      const desc2 = get(COL.desc2);
-      const description = [desc1, desc2].filter(Boolean).join(" ");
+        const hasData =
+          partNumber ||
+          description ||
+          get(COL.shop) ||
+          get(COL.van) ||
+          get(COL.pins) ||
+          get(COL.category);
 
-      // Skip spacer / totally empty rows
-      const hasData =
-        partNumber ||
-        description ||
-        get(COL.shop) ||
-        get(COL.van) ||
-        get(COL.pins) ||
-        get(COL.category);
+        if (!hasData) return null;
 
-      if (!hasData) continue;
+        const oems = [];
+        if (get(COL.ford)) oems.push("Ford");
+        if (get(COL.gm)) oems.push("GM");
+        if (get(COL.hyundaiKia)) oems.push("HyundaiKia");
+        if (get(COL.nissan)) oems.push("Nissan");
+        if (get(COL.toyota)) oems.push("Toyota");
 
-      const oems = [];
-      if (get(COL.ford)) oems.push("Ford");
-      if (get(COL.gm)) oems.push("GM");
-      if (get(COL.hyundaiKia)) oems.push("HyundaiKia");
-      if (get(COL.nissan)) oems.push("Nissan");
-      if (get(COL.toyota)) oems.push("Toyota");
+        const rawPic = get(COL.picture);
+        const pictureUrl = toDriveDirect(rawPic);
 
-      const items = rows.map((row) => {
-  const get = (i) => (row[i] !== undefined ? row[i] : "");
+        return {
+          picture: pictureUrl,
+          partNumber,
+          description,
 
-  // ...
+          shop: get(COL.shop),
+          shopQty: Number(get(COL.shopQty)) || 0,
+          van: get(COL.van),
+          vanQty: Number(get(COL.vanQty)) || 0,
 
-  const rawPic = get(COL.picture);
-  const pictureUrl = toDriveDirect(rawPic);
+          pins: get(COL.pins),
+          category: get(COL.category),
+          gender: get(COL.gender),
+          manufacturer: get(COL.manufacturer),
 
-  return {
-    picture: pictureUrl,
-    partNumber: get(COL.partNumber),
-    description: desc,
-    // ... rest unchanged ...
-  };
-});
+          oems,
+          vehicle: oems.join(", "),
+          terminalSizes: get(COL.terminalSizes),
 
-      items.push({
-        picture: pictureUrl,
-        partNumber,
-        description,
+          details: {
+            terminal1Code: get(COL.term1_code),
+            terminal1Range: formatTermRange(get(COL.term1_bin)),
+            terminal1Tub: get(COL.term1_tub),
 
-        shop: get(COL.shop),
-        shopQty: Number(get(COL.shopQty)) || 0,
-        van: get(COL.van),
-        vanQty: Number(get(COL.vanQty)) || 0,
+            terminal2Code: get(COL.term2_code),
+            terminal2Range: formatTermRange(get(COL.term2_bin)),
+            terminal2Tub: get(COL.term2_tub),
 
-        pins: get(COL.pins),
-        category: get(COL.category),
-        gender: get(COL.gender),
-        manufacturer: get(COL.manufacturer),
+            mating: get(COL.mating),
+            price: get(COL.price),
 
-        oems,
-        vehicle: oems.join(", "),
-        terminalSizes: get(COL.terminalSizes),
+            ford: get(COL.ford),
+            gm: get(COL.gm),
+            hyundaiKia: get(COL.hyundaiKia),
+            nissan: get(COL.nissan),
+            toyota: get(COL.toyota),
+          },
+        };
+      })
+      .filter(Boolean); // drop nulls
 
-        details: {
-          terminal1Code: get(COL.term1_code),
-          terminal1Range: formatTermRange(get(COL.term1_bin)),
-          terminal1Tub: get(COL.term1_tub),
-
-          terminal2Code: get(COL.term2_code),
-          terminal2Range: formatTermRange(get(COL.term2_bin)),
-          terminal2Tub: get(COL.term2_tub),
-
-          mating: get(COL.mating),
-          price: get(COL.price),
-
-          ford: get(COL.ford),
-          gm: get(COL.gm),
-          hyundaiKia: get(COL.hyundaiKia),
-          nissan: get(COL.nissan),
-          toyota: get(COL.toyota),
-        },
-      });
-    }
-
+    // Pin count options (Stats!A2:A)
     const pinOptions = pinStatsRows
       .map((r) => r[0])
       .filter(Boolean)
       .filter((v, i, arr) => arr.indexOf(v) === i)
       .sort((a, b) => Number(a) - Number(b));
 
+    // Supplier dropdown options (Stats!E2:E)
     const manufacturerOptions = supplierStatsRows
       .map((r) => r[0])
       .filter(Boolean)
