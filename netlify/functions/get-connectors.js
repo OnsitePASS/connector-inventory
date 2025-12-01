@@ -8,6 +8,44 @@ function formatTermRange(raw) {
   return match ? `T:${match[1].replace(/\s+/g, "")}` : String(raw);
 }
 
+// Convert whatever is in AQ into a clean, embeddable Google Drive image URL
+function normalizeDriveUrl(raw) {
+  if (!raw) return "";
+  let str = String(raw).trim();
+
+  // Strip surrounding quotes if someone stored it as "https://..."
+  str = str.replace(/^['"]+|['"]+$/g, "");
+
+  // If it's not a Drive URL, just return as-is
+  if (!str.includes("drive.google.com")) return str;
+
+  // Try to extract the file ID from several common formats
+  let id = null;
+
+  // Format: ...uc?export=view&id=FILE_ID...
+  const idParamMatch = str.match(/[?&]id=([^&]+)/);
+  if (idParamMatch) {
+    id = idParamMatch[1];
+  }
+
+  // Format: .../file/d/FILE_ID/view...
+  if (!id) {
+    const fileMatch = str.match(/\/file\/d\/([^/]+)/);
+    if (fileMatch) {
+      id = fileMatch[1];
+    }
+  }
+
+  // If we still couldn't find an ID, just return the original string
+  if (!id) return str;
+
+  // Return a normalized direct-view URL
+  return `https://drive.google.com/uc?export=view&id=${id}`;
+  // If you prefer a smaller thumbnail instead, you can use:
+  // return `https://drive.google.com/thumbnail?id=${id}&sz=w400`;
+}
+
+
 // Turn "https://drive.google.com/file/d/ID/view?..." into
 // "https://drive.google.com/uc?export=view&id=ID"
 function normalizeDriveUrl(url) {
