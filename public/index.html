@@ -765,7 +765,7 @@
     </div>
   </div>
 
- <script>
+<script>
   // ================== CONSTANTS / STATE ==================
   const DATA_URL = "/.netlify/functions/get-connectors";
   const REQUEST_URL =
@@ -866,6 +866,17 @@
     if (!id) return str;
 
     return `https://drive.google.com/uc?export=view&id=${id}`;
+  }
+
+  // Safely grab whatever picture field the backend is using
+  function getPictureRaw(item) {
+    return (
+      item.picture ||
+      item.picUrl ||
+      item.pictureUrl ||
+      item.imageUrl ||
+      ""
+    );
   }
 
   function updateMultiLabel(filterName) {
@@ -1033,7 +1044,7 @@
 
       // Pic only
       if (hasPic) {
-        const picUrl = normalizeDriveUrl(item.picture);
+        const picUrl = normalizeDriveUrl(getPictureRaw(item));
         if (!(picUrl && /^https?:\/\//.test(picUrl))) return false;
       }
 
@@ -1185,7 +1196,7 @@
 
       // Pic
       const tdPic = document.createElement("td");
-      const picUrl = normalizeDriveUrl(item.picture);
+      const picUrl = normalizeDriveUrl(getPictureRaw(item));
       if (picUrl && /^https?:\/\//.test(picUrl)) {
         const img = document.createElement("img");
         img.src = picUrl;
@@ -1471,9 +1482,17 @@
 
       connectorData = data.items;
 
-      // quick debug to verify picture URLs
+      // quick debug to verify fields
       if (connectorData.length) {
-        console.log("Sample picture URL:", connectorData[0].picture);
+        console.log("Sample item from API:", connectorData[0]);
+        console.log(
+          "Raw picture field on first item:",
+          getPictureRaw(connectorData[0])
+        );
+        console.log(
+          "Normalized picture URL on first item:",
+          normalizeDriveUrl(getPictureRaw(connectorData[0]))
+        );
       }
 
       // Build pins menu
