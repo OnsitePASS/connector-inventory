@@ -524,6 +524,14 @@
       color: #4b5563;
     }
 
+    .details-term-sub-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.75rem;
+      color: #4b5563;
+      margin-top: 2px;
+    }
+
     thead th:nth-child(1),
     tbody td:nth-child(1) { width: 24px; max-width: 24px; }   /* expander */
     thead th:nth-child(2),
@@ -1017,54 +1025,93 @@
     saveFilters();
   }
 
-  function createDetailsGrid(details) {
+    function createDetailsGrid(details) {
     const grid = document.createElement("div");
     grid.className = "details-grid";
 
-    const makeBlock = (title, main, sub) => {
-      if (!main && !sub) return null;
+    // title = "TERMINAL 1", "PRICE", etc.
+    // main  = big bold line
+    // subLeft / subRight = small line under main (we use both only for terminals)
+    const makeBlock = (title, main, subLeft, subRight) => {
+      if (!main && !subLeft && !subRight) return null;
+
       const block = document.createElement("div");
       block.className = "details-term-block";
 
       const titleEl = document.createElement("div");
       titleEl.className = "details-term-title";
       titleEl.textContent = title;
-
-      const mainEl = document.createElement("div");
-      mainEl.className = "details-term-main";
-      mainEl.textContent = main || "";
-
-      const subEl = document.createElement("div");
-      subEl.className = "details-term-sub";
-      subEl.textContent = sub || "";
-
       block.appendChild(titleEl);
-      if (main) block.appendChild(mainEl);
-      if (sub) block.appendChild(subEl);
+
+      if (main) {
+        const mainEl = document.createElement("div");
+        mainEl.className = "details-term-main";
+        mainEl.textContent = main;
+        block.appendChild(mainEl);
+      }
+
+      if (subLeft || subRight) {
+        const row = document.createElement("div");
+        row.className = "details-term-sub-row";
+
+        const leftSpan = document.createElement("span");
+        leftSpan.textContent = subLeft || "";
+
+        const rightSpan = document.createElement("span");
+        rightSpan.textContent = subRight || "";
+
+        row.appendChild(leftSpan);
+        row.appendChild(rightSpan);
+        block.appendChild(row);
+      }
 
       return block;
     };
 
-    // Terminal 1: W (Term Tub) on top, X (Term Bin, formatted) under it
-    const t1 = makeBlock("TERMINAL 1", details.terminal1Tub, details.terminal1Range);
+    // TERMINAL 1
+    //  - main:  Y  (terminal1Code)
+    //  - left:  W  (terminal1Tub)
+    //  - right: X  (terminal1Range, e.g. "T:1-4")
+    const t1 = makeBlock(
+      "TERMINAL 1",
+      details.terminal1Code,
+      details.terminal1Tub || "",
+      details.terminal1Range || ""
+    );
 
-    // Terminal 2: AD (Term Tub) on top, AC (Term Bin, formatted) under it
-    const t2 = makeBlock("TERMINAL 2", details.terminal2Tub, details.terminal2Range);
-    const mating = makeBlock("MATING", details.mating || "", "");
+    // TERMINAL 2
+    //  - main:  AB (terminal2Code)
+    //  - left:  AD (terminal2Tub)
+    //  - right: AC (terminal2Range)
+    const t2 = makeBlock(
+      "TERMINAL 2",
+      details.terminal2Code,
+      details.terminal2Tub || "",
+      details.terminal2Range || ""
+    );
 
+    // Mating
+    const mating = makeBlock("MATING", details.mating || "", "", "");
+
+    // Price
     let priceText = "";
-    if (typeof details.price === "number") priceText = `$${details.price.toFixed(2)}`;
-    else if (details.price) priceText = String(details.price);
-    const price = makeBlock("PRICE", priceText, "");
+    if (typeof details.price === "number") {
+      priceText = `$${details.price.toFixed(2)}`;
+    } else if (details.price) {
+      priceText = String(details.price);
+    }
+    const price = makeBlock("PRICE", priceText || "", "", "");
 
-    [t1, t2, mating, price].forEach((b) => b && grid.appendChild(b));
+    // OEM columns
+    const ford   = makeBlock("FORD",         details.ford        || "", "", "");
+    const gm     = makeBlock("GM",           details.gm          || "", "", "");
+    const hk     = makeBlock("HYUNDAI/KIA",  details.hyundaiKia  || "", "", "");
+    const nissan = makeBlock("NISSAN",       details.nissan      || "", "", "");
+    const toyota = makeBlock("TOYOTA",       details.toyota      || "", "", "");
 
-    const ford = makeBlock("FORD", details.ford || "", "");
-    const gm = makeBlock("GM", details.gm || "", "");
-    const hk = makeBlock("HYUNDAI/KIA", details.hyundaiKia || "", "");
-    const nissan = makeBlock("NISSAN", details.nissan || "", "");
-    const toyota = makeBlock("TOYOTA", details.toyota || "", "");
-    [ford, gm, hk, nissan, toyota].forEach((b) => b && grid.appendChild(b));
+    [t1, t2, mating, price, ford, gm, hk, nissan, toyota].forEach((b) => {
+      if (b) grid.appendChild(b);
+    });
 
     if (!grid.children.length) {
       const empty = document.createElement("div");
@@ -1075,6 +1122,7 @@
 
     return grid;
   }
+
 
   function selectItem(item, rowEl) {
     selectedItem = item;
