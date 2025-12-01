@@ -1,6 +1,26 @@
 // netlify/functions/get-connectors.js
 const { google } = require("googleapis");
 
+// Force a direct Google Drive image URL
+function toDriveDirect(url) {
+  if (!url) return "";
+  const str = String(url).trim();
+
+  // Try to extract the file ID from either ?id=... or /d/.../ style
+  const m =
+    str.match(/[?&]id=([a-zA-Z0-9_-]+)/) ||
+    str.match(/\/d\/([a-zA-Z0-9_-]+)/);
+
+  if (!m) {
+    return str; // not a drive URL we know, just return as-is
+  }
+
+  const id = m[1];
+  // Direct file content host that works well in <img>
+  return `https://drive.usercontent.google.com/uc?id=${id}&export=view`;
+}
+
+
 // Convert "Terminals #1-8" → "T:1-8"
 function formatTermRange(raw) {
   if (!raw) return "";
@@ -153,8 +173,21 @@ exports.handler = async function (event) {
       if (get(COL.nissan)) oems.push("Nissan");
       if (get(COL.toyota)) oems.push("Toyota");
 
-      const rawPic = get(COL.picture);
-      const pictureUrl = normalizeDriveUrl(rawPic);
+      const items = rows.map((row) => {
+  const get = (i) => (row[i] !== undefined ? row[i] : "");
+
+  // ...
+
+  const rawPic = get(COL.picture);
+  const pictureUrl = toDriveDirect(rawPic);
+
+  return {
+    picture: pictureUrl,
+    partNumber: get(COL.partNumber),
+    description: desc,
+    // ... rest unchanged ...
+  };
+});
 
       items.push({
         picture: pictureUrl,
