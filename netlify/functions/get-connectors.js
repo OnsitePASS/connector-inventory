@@ -31,7 +31,7 @@ exports.handler = async function (event) {
       spreadsheetId,
       ranges: [
         mainRange,
-        "Stats!A2:A", // Pins
+        "Stats!A2:A", // Pin counts
         "Stats!E2:E", // Supplier list
       ],
     });
@@ -76,13 +76,26 @@ exports.handler = async function (event) {
       picture: 42,       // AQ
     };
 
-    const items = rows.map((row) => {
+    const items = [];
+
+    for (const row of rows) {
       const get = (i) => (row[i] !== undefined ? row[i] : "");
 
-      // Description from O + P
-      const desc = [get(COL.desc1), get(COL.desc2)]
-        .filter(Boolean)
-        .join(" ");
+      const partNumber = get(COL.partNumber);
+      const desc1 = get(COL.desc1);
+      const desc2 = get(COL.desc2);
+      const description = [desc1, desc2].filter(Boolean).join(" ");
+
+      // Skip completely empty / spacer rows (fixes the blank rows you see)
+      const hasData =
+        partNumber ||
+        description ||
+        get(COL.shop) ||
+        get(COL.van) ||
+        get(COL.pins) ||
+        get(COL.category);
+
+      if (!hasData) continue;
 
       const oems = [];
       if (get(COL.ford)) oems.push("Ford");
@@ -91,10 +104,10 @@ exports.handler = async function (event) {
       if (get(COL.nissan)) oems.push("Nissan");
       if (get(COL.toyota)) oems.push("Toyota");
 
-      return {
+      items.push({
         picture: get(COL.picture),
-        partNumber: get(COL.partNumber),
-        description: desc,
+        partNumber,
+        description,
 
         shop: get(COL.shop),
         shopQty: Number(get(COL.shopQty)) || 0,
@@ -122,7 +135,6 @@ exports.handler = async function (event) {
           terminal2Tub: get(COL.term2_tub),
 
           mating: get(COL.mating),
-
           price: get(COL.price),
 
           ford: get(COL.ford),
@@ -131,8 +143,8 @@ exports.handler = async function (event) {
           nissan: get(COL.nissan),
           toyota: get(COL.toyota),
         },
-      };
-    });
+      });
+    }
 
     // Pin count options (Stats!A2:A)
     const pinOptions = pinStatsRows
