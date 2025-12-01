@@ -1,186 +1,162 @@
 // netlify/functions/get-connectors.js
 const { google } = require("googleapis");
 
+// Convert "Terminals #1-8" → "T:1-8"
 function formatTermRange(raw) {
   if (!raw) return "";
-  const str = String(raw);
-  // Look for things like "Terminals #1-8"
-  const match = str.match(/#\s*(\d+\s*-\s*\d+)/);
-  if (match) {
-    const range = match[1].replace(/\s*/g, "");
-    return `T:${range}`;
-  }
-  return str;
+  const match = String(raw).match(/#\s*(\d+\s*-\s*\d+)/);
+  return match ? `T:${match[1].replace(/\s+/g, "")}` : String(raw);
 }
 
-exports.handler = async function (event, context) {
+exports.handler = async function (event) {
   try {
     if (event.httpMethod !== "GET") {
-      return {
-        statusCode: 405,
-        body: JSON.stringify({ error: "Method not allowed" }),
-      };
+      return { statusCode: 405, body: "Method Not Allowed" };
     }
 
-    const credsJson = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
+    const creds = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON);
     const spreadsheetId = process.env.SHEETS_SPREADSHEET_ID;
     const mainRange =
-      process.env.SHEETS_RANGE || "Connector Inventory!A2:AQ";
-
-    const pinStatsRange = "Stats!A2:A"; // Pin dropdown source
-    const supplierStatsRange = "Stats!E2:E"; // Supplier dropdown source
-
-    if (!credsJson || !spreadsheetId) {
-      throw new Error(
-        "Missing GOOGLE_SERVICE_ACCOUNT_JSON or SHEETS_SPREADSHEET_ID env vars"
-      );
-    }
-
-    const credentials = JSON.parse(credsJson);
+      process.env.SHEETS_RANGE || "'Connector Inventory'!A2:AZ";
 
     const auth = new google.auth.GoogleAuth({
-      credentials,
+      credentials: creds,
       scopes: ["https://www.googleapis.com/auth/spreadsheets.readonly"],
     });
 
     const sheets = google.sheets({ version: "v4", auth });
 
-    // Read: main inventory, Stats!A2:A (pins), Stats!E2:E (suppliers)
-    const res = await sheets.spreadsheets.values.batchGet({
+    // Pull Inventory + Stats ranges
+    const response = await sheets.spreadsheets.values.batchGet({
       spreadsheetId,
-      ranges: [mainRange, pinStatsRange, supplierStatsRange],
+      ranges: [
+        mainRange,
+        "Stats!A2:A", // Pins
+        "Stats!E2:E", // Supplier list
+      ],
     });
 
-    const mainRows = res.data.valueRanges[0]?.values || [];
-    const pinStatsRows = res.data.valueRanges[1]?.values || [];
-    const supplierRows = res.data.valueRanges[2]?.values || [];
+    const rows = response.data.valueRanges[0].values || [];
+    const pinStatsRows = response.data.valueRanges[1].values || [];
+    const supplierStatsRows = response.data.valueRanges[2].values || [];
 
-    // Zero-based indexes
+    // Column index mapping (0-based)
     const COL = {
-      // Main columns
-      partNumber: 1, // B
-      shop: 7, // H
-      shopQty: 8, // I
-      van: 9, // J
-      vanQty: 10, // K
-      category: 11, // L - Type
-      pins: 12, // M
-      gender: 13, // N
-      desc1: 14, // O
-      desc2: 15, // P
-      manufacturer: 16, // Q
+      partNumber: 1,     // B
+      shop: 7,           // H
+      shopQty: 8,        // I
+      van: 9,            // J
+      vanQty: 10,        // K
+      gender: 11,        // L
+      pins: 12,          // M
+      category: 13,      // N
+      desc1: 14,         // O
+      desc2: 15,         // P
+      manufacturer: 16,  // Q
 
-      ford: 17, // R
-      gm: 18, // S
-      hyundaiKia: 19, // T
-      nissan: 20, // U
-      toyota: 21, // V
+      ford: 17,          // R
+      gm: 18,            // S
+      hyundaiKia: 19,    // T
+      nissan: 20,        // U
+      toyota: 21,        // V
 
-      term1Code: 22, // W
-      term1Range: 23, // X
+      term1_tub: 22,     // W
+      term1_bin: 23,     // X
+      term1_code: 24,    // Y
 
-      term2Range: 28, // AC
-      term2Code: 29, // AD
+      term2_code: 27,    // AB
+      term2_bin: 28,     // AC
+      term2_tub: 29,     // AD
 
-      mating: 30, // AE
+      mating: 30,        // AE
 
-      price: 37, // AL
+      price: 37,         // AL
+
       terminalSizes: 41, // AP
-
-      picture: 42, // AQ - image URL
+      picture: 42,       // AQ
     };
 
-    const items = mainRows.map((row) => {
+    const items = rows.map((row) => {
       const get = (i) => (row[i] !== undefined ? row[i] : "");
 
-      const desc1 = get(COL.desc1);
-      const desc2 = get(COL.desc2);
-      const description = [desc1, desc2].filter(Boolean).join(" ");
-
-      const ford = get(COL.ford);
-      const gm = get(COL.gm);
-      const hyundaiKia = get(COL.hyundaiKia);
-      const nissan = get(COL.nissan);
-      const toyota = get(COL.toyota);
+      // Description from O + P
+      const desc = [get(COL.desc1), get(COL.desc2)]
+        .filter(Boolean)
+        .join(" ");
 
       const oems = [];
-      if (ford) oems.push("Ford");
-      if (gm) oems.push("GM");
-      if (hyundaiKia) oems.push("HyundaiKia");
-      if (nissan) oems.push("Nissan");
-      if (toyota) oems.push("Toyota");
-
-      const priceRaw = get(COL.price);
-      const priceNum = Number(priceRaw);
-      const price =
-        !isNaN(priceNum) && priceRaw !== ""
-          ? priceNum
-          : priceRaw || ""; // keep string if not numeric
-
-      const terminalSizes = get(COL.terminalSizes); // comma-separated
+      if (get(COL.ford)) oems.push("Ford");
+      if (get(COL.gm)) oems.push("GM");
+      if (get(COL.hyundaiKia)) oems.push("HyundaiKia");
+      if (get(COL.nissan)) oems.push("Nissan");
+      if (get(COL.toyota)) oems.push("Toyota");
 
       return {
         picture: get(COL.picture),
         partNumber: get(COL.partNumber),
-        description,
+        description: desc,
+
         shop: get(COL.shop),
         shopQty: Number(get(COL.shopQty)) || 0,
         van: get(COL.van),
         vanQty: Number(get(COL.vanQty)) || 0,
+
         pins: get(COL.pins),
         category: get(COL.category),
         gender: get(COL.gender),
         manufacturer: get(COL.manufacturer),
-        vehicle: oems.join(", "),
+
         oems,
-        altNumber: "",
-        passNumber: "",
-        terminalSizes,
+        vehicle: oems.join(", "),
+        terminalSizes: get(COL.terminalSizes),
+
         details: {
-          terminal1Code: get(COL.term1Code),
-          terminal1Range: formatTermRange(get(COL.term1Range)),
-          terminal2Code: get(COL.term2Code),
-          terminal2Range: formatTermRange(get(COL.term2Range)),
+          // Terminal 1
+          terminal1Code: get(COL.term1_code),
+          terminal1Range: formatTermRange(get(COL.term1_bin)),
+          terminal1Tub: get(COL.term1_tub),
+
+          // Terminal 2
+          terminal2Code: get(COL.term2_code),
+          terminal2Range: formatTermRange(get(COL.term2_bin)),
+          terminal2Tub: get(COL.term2_tub),
+
           mating: get(COL.mating),
-          price,
-          ford,
-          gm,
-          hyundaiKia,
-          nissan,
-          toyota,
+
+          price: get(COL.price),
+
+          ford: get(COL.ford),
+          gm: get(COL.gm),
+          hyundaiKia: get(COL.hyundaiKia),
+          nissan: get(COL.nissan),
+          toyota: get(COL.toyota),
         },
       };
     });
 
-    // Pin options from Stats!A2:A
+    // Pin count options (Stats!A2:A)
     const pinOptions = pinStatsRows
-      .map((r) => (r && r[0] !== undefined ? String(r[0]) : ""))
-      .filter((v) => v !== "")
+      .map((r) => r[0])
+      .filter(Boolean)
       .filter((v, i, arr) => arr.indexOf(v) === i)
-      .sort((a, b) => {
-        const na = Number(a);
-        const nb = Number(b);
-        if (!isNaN(na) && !isNaN(nb)) return na - nb;
-        return a.localeCompare(b);
-      });
+      .sort((a, b) => Number(a) - Number(b));
 
-    // Supplier options from Stats!E2:E
-    const manufacturerOptions = supplierRows
-      .map((r) => (r && r[0] !== undefined ? String(r[0]) : ""))
-      .filter((v) => v !== "")
+    // Supplier dropdown options (Stats!E2:E)
+    const manufacturerOptions = supplierStatsRows
+      .map((r) => r[0])
+      .filter(Boolean)
       .filter((v, i, arr) => arr.indexOf(v) === i)
-      .sort((a, b) => String(a).localeCompare(String(b)));
+      .sort();
 
     return {
       statusCode: 200,
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ items, pinOptions, manufacturerOptions }),
     };
-  } catch (err) {
-    console.error("get-connectors error:", err);
+  } catch (e) {
+    console.error("Error in get-connectors:", e);
     return {
       statusCode: 500,
-      body: JSON.stringify({ error: err.message || "Server error" }),
+      body: JSON.stringify({ error: e.toString() }),
     };
   }
 };
