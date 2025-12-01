@@ -8,6 +8,18 @@ function formatTermRange(raw) {
   return match ? `T:${match[1].replace(/\s+/g, "")}` : String(raw);
 }
 
+// Turn "https://drive.google.com/file/d/ID/view?..." into
+// "https://drive.google.com/uc?export=view&id=ID"
+function normalizeDriveUrl(url) {
+  if (!url) return "";
+  const str = String(url);
+  const m = str.match(/https:\/\/drive\.google\.com\/file\/d\/([^/]+)/);
+  if (m && m[1]) {
+    return `https://drive.google.com/uc?export=view&id=${m[1]}`;
+  }
+  return str;
+}
+
 exports.handler = async function (event) {
   try {
     if (event.httpMethod !== "GET") {
@@ -26,7 +38,6 @@ exports.handler = async function (event) {
 
     const sheets = google.sheets({ version: "v4", auth });
 
-    // Pull Inventory + Stats ranges
     const response = await sheets.spreadsheets.values.batchGet({
       spreadsheetId,
       ranges: [
@@ -86,7 +97,7 @@ exports.handler = async function (event) {
       const desc2 = get(COL.desc2);
       const description = [desc1, desc2].filter(Boolean).join(" ");
 
-      // Skip completely empty / spacer rows (fixes the blank rows you see)
+      // Skip spacer / totally empty rows
       const hasData =
         partNumber ||
         description ||
@@ -104,8 +115,11 @@ exports.handler = async function (event) {
       if (get(COL.nissan)) oems.push("Nissan");
       if (get(COL.toyota)) oems.push("Toyota");
 
+      const rawPic = get(COL.picture);
+      const pictureUrl = normalizeDriveUrl(rawPic);
+
       items.push({
-        picture: get(COL.picture),
+        picture: pictureUrl,
         partNumber,
         description,
 
@@ -124,12 +138,10 @@ exports.handler = async function (event) {
         terminalSizes: get(COL.terminalSizes),
 
         details: {
-          // Terminal 1
           terminal1Code: get(COL.term1_code),
           terminal1Range: formatTermRange(get(COL.term1_bin)),
           terminal1Tub: get(COL.term1_tub),
 
-          // Terminal 2
           terminal2Code: get(COL.term2_code),
           terminal2Range: formatTermRange(get(COL.term2_bin)),
           terminal2Tub: get(COL.term2_tub),
@@ -146,14 +158,12 @@ exports.handler = async function (event) {
       });
     }
 
-    // Pin count options (Stats!A2:A)
     const pinOptions = pinStatsRows
       .map((r) => r[0])
       .filter(Boolean)
       .filter((v, i, arr) => arr.indexOf(v) === i)
       .sort((a, b) => Number(a) - Number(b));
 
-    // Supplier dropdown options (Stats!E2:E)
     const manufacturerOptions = supplierStatsRows
       .map((r) => r[0])
       .filter(Boolean)
