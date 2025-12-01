@@ -277,6 +277,31 @@
       box-shadow: 0 12px 24px rgba(15, 23, 42, 0.3);
     }
 
+    .pager {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+  margin: 4px 0 8px;
+  font-size: 0.78rem;
+  color: #4b5563;
+}
+
+.pager button {
+  border-radius: 999px;
+  border: 1px solid #cbd5e1;
+  padding: 3px 10px;
+  font-size: 0.78rem;
+  background: #ffffff;
+  cursor: pointer;
+}
+
+.pager button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+
     .tiny-check {
       display: inline-flex;
       align-items: center;
@@ -699,6 +724,12 @@
         </div>
       </div>
 
+      <div id="pager" class="pager">
+  <button type="button" id="prevPageBtn">‹ Prev</button>
+  <span id="pageInfo">Page 1 of 1 · 0 items</span>
+  <button type="button" id="nextPageBtn">Next ›</button>
+</div>
+
       <!-- Table -->
       <div class="table-wrapper">
         <table>
@@ -727,16 +758,14 @@
   </div>
 
   <script>
-  // Netlify Function for loading inventory data
   const DATA_URL = "/.netlify/functions/get-connectors";
-
-  // Keep Apps Script for "Request this connector" (for now)
   const REQUEST_URL =
     "https://script.google.com/macros/s/AKfycbzQISzKogNh6a9h3x4Ei6nVK2hYRQkUJNpra0YTY4KcrPDeamps-4rAm67NhMId_DAj/exec";
   const STORAGE_KEY = "connectorInventoryFiltersV1";
 
-  // To keep the DOM light: only render this many rows at once
-  const MAX_ROWS_TO_RENDER = 300;
+  const PAGE_SIZE = 50;
+  let currentPage = 1;
+  let lastTotalPages = 1;
 
   let connectorData = [];
   let currentSort = { key: "partNumber", dir: "asc" };
@@ -750,7 +779,6 @@
   const resultsBody = document.getElementById("resultsBody");
   const resultsCount = document.getElementById("resultsCount");
   const resetFiltersBtn = document.getElementById("resetFiltersBtn");
-
   const hasPictureCheckbox = document.getElementById("hasPictureFilter");
 
   const actionBar = document.getElementById("actionBar");
@@ -765,6 +793,10 @@
   const termSizeLabel = document.getElementById("termSizeLabel");
   const manufacturerLabel = document.getElementById("manufacturerLabel");
   const oemLabel = document.getElementById("oemLabel");
+
+  const prevPageBtn = document.getElementById("prevPageBtn");
+  const nextPageBtn = document.getElementById("nextPageBtn");
+  const pageInfo = document.getElementById("pageInfo");
 
   const multiState = {
     category: new Set(),
@@ -789,12 +821,10 @@
     const v = normalize(raw);
     if (!v) return "";
     if (v.includes("m & f")) return "m & f";
-    // "M/F", "M F", etc
-    if (v.includes("m") && v.includes("f") && !v.includes("male") && !v.includes("female")) {
+    if (v.includes("m") && v.includes("f") && !v.includes("male") && !v.includes("female"))
       return "m & f";
-    }
-    if (v.startsWith("m")) return "male";    // M, MALE
-    if (v.startsWith("f")) return "female"; // F, FEMALE
+    if (v.startsWith("m")) return "male";
+    if (v.startsWith("f")) return "female";
     return v;
   }
 
@@ -872,6 +902,15 @@
     }
   }
 
+  function updatePager(page, totalPages, totalCount) {
+    pageInfo.textContent = `Page ${page} of ${totalPages} · ${totalCount} item${
+      totalCount === 1 ? "" : "s"
+    }`;
+    prevPageBtn.disabled = page <= 1;
+    nextPageBtn.disabled = page >= totalPages;
+    lastTotalPages = totalPages;
+  }
+
   function applyFilters() {
     const search = normalize(searchInput.value);
     const loc = normalize(locationFilter.value);
@@ -885,7 +924,6 @@
     const hasPic = hasPictureCheckbox.checked;
 
     let filtered = connectorData.filter((item) => {
-      // Free-text search
       if (search) {
         const haystack = normalize(
           [
@@ -902,25 +940,21 @@
         if (!haystack.includes(search)) return false;
       }
 
-      // Type (Col N)
       if (catsSelected.length) {
         const catNorm = normalize(item.category);
         if (!catsSelected.includes(catNorm)) return false;
       }
 
-      // Pins (Stats!A2:A → Col M)
       if (pinsSelected.length) {
         const pinsStr = String(item.pins ?? "");
         if (!pinsSelected.includes(pinsStr)) return false;
       }
 
-      // Gender (Col L)
       if (gendersSelected.length) {
         const gNorm = normalizeGenderValue(item.gender);
         if (!gendersSelected.includes(gNorm)) return false;
       }
 
-      // Terminal Size (Col AP, comma/space separated)
       if (termSizesSelected.length) {
         const raw = String(item.terminalSizes || "");
         const tokens = raw
@@ -931,25 +965,21 @@
         if (!tokens.some((t) => termSizesSelected.includes(t))) return false;
       }
 
-      // Location (Shop or Van): Columns H & J
       if (loc) {
         const combinedLoc = normalize((item.shop || "") + " " + (item.van || ""));
         if (!combinedLoc.includes(loc)) return false;
       }
 
-      // Supplier (Stats!E2:E → Col Q)
       if (mfrSelected.length) {
         const mfNorm = normalize(item.manufacturer);
         if (!mfrSelected.includes(mfNorm)) return false;
       }
 
-      // Vehicle / OEM (Ford, GM, HyundaiKia, Nissan, Toyota in R–V)
       if (oemSelected.length) {
         const itemOems = (item.oems || []).map((o) => normalize(o));
         if (!oemSelected.some((sel) => itemOems.includes(sel))) return false;
       }
 
-      // Pic only
       if (hasPic) {
         if (!(item.picture && /^https?:\/\//.test(item.picture))) return false;
       }
@@ -957,7 +987,6 @@
       return true;
     });
 
-    // Sort
     filtered.sort((a, b) => {
       const { key, dir } = currentSort;
       let va = a[key],
@@ -976,9 +1005,15 @@
       return 0;
     });
 
-    // Limit rendered rows to keep memory reasonable
-    const toRender = filtered.slice(0, MAX_ROWS_TO_RENDER);
-    renderResults(toRender, filtered.length);
+    const totalCount = filtered.length;
+    const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
+    if (currentPage > totalPages) currentPage = totalPages;
+
+    const start = (currentPage - 1) * PAGE_SIZE;
+    const pageItems = filtered.slice(start, start + PAGE_SIZE);
+
+    renderResults(pageItems, totalCount);
+    updatePager(currentPage, totalPages, totalCount);
     saveFilters();
   }
 
@@ -1010,22 +1045,20 @@
       return block;
     };
 
-    // Row 1: Terminal 1, Terminal 2, Mating, Price
-    const t1 = makeBlock("TERMINAL 1", details.terminal1Code, details.terminal1Range);
-    const t2 = makeBlock("TERMINAL 2", details.terminal2Code, details.terminal2Range);
+    // Terminal 1: W (Term Tub) on top, X (Term Bin, formatted) under it
+    const t1 = makeBlock("TERMINAL 1", details.terminal1Tub, details.terminal1Range);
+
+    // Terminal 2: AD (Term Tub) on top, AC (Term Bin, formatted) under it
+    const t2 = makeBlock("TERMINAL 2", details.terminal2Tub, details.terminal2Range);
     const mating = makeBlock("MATING", details.mating || "", "");
 
     let priceText = "";
-    if (typeof details.price === "number") {
-      priceText = `$${details.price.toFixed(2)}`;
-    } else if (details.price) {
-      priceText = String(details.price);
-    }
+    if (typeof details.price === "number") priceText = `$${details.price.toFixed(2)}`;
+    else if (details.price) priceText = String(details.price);
     const price = makeBlock("PRICE", priceText, "");
 
     [t1, t2, mating, price].forEach((b) => b && grid.appendChild(b));
 
-    // Row 2: OEM columns
     const ford = makeBlock("FORD", details.ford || "", "");
     const gm = makeBlock("GM", details.gm || "", "");
     const hk = makeBlock("HYUNDAI/KIA", details.hyundaiKia || "", "");
@@ -1074,7 +1107,6 @@
       const tr = document.createElement("tr");
       tr.className = "data-row";
 
-      // Expander
       const tdExp = document.createElement("td");
       const exp = document.createElement("span");
       exp.className = "expander";
@@ -1082,7 +1114,6 @@
       tdExp.appendChild(exp);
       tr.appendChild(tdExp);
 
-      // Pic
       const tdPic = document.createElement("td");
       if (item.picture && /^https?:\/\//.test(item.picture)) {
         const img = document.createElement("img");
@@ -1099,17 +1130,14 @@
       }
       tr.appendChild(tdPic);
 
-      // Part #
       const tdPart = document.createElement("td");
       tdPart.textContent = item.partNumber || "";
       tr.appendChild(tdPart);
 
-      // Description
       const tdDesc = document.createElement("td");
       tdDesc.textContent = item.description || "";
       tr.appendChild(tdDesc);
 
-      // Shop
       const tdShop = document.createElement("td");
       tdShop.textContent = item.shop || "";
       tdShop.className = "shop-cell";
@@ -1123,7 +1151,6 @@
       tdShopQty.className = "shop-qty";
       tr.appendChild(tdShopQty);
 
-      // Van
       const tdVan = document.createElement("td");
       tdVan.textContent = item.van || "";
       tdVan.className = "van-cell";
@@ -1138,12 +1165,10 @@
       tdVanQty.className = "van-qty";
       tr.appendChild(tdVanQty);
 
-      // Pins
       const tdPins = document.createElement("td");
       tdPins.textContent = item.pins || "";
       tr.appendChild(tdPins);
 
-      // Type
       const tdType = document.createElement("td");
       const tag = document.createElement("span");
       tag.className = "tag";
@@ -1151,19 +1176,16 @@
       tdType.appendChild(tag);
       tr.appendChild(tdType);
 
-      // Gender
       const tdGender = document.createElement("td");
       const gNorm = normalizeGenderValue(item.gender);
       tdGender.textContent =
         gNorm === "female" ? "F" : gNorm === "male" ? "M" : gNorm.toUpperCase();
       tr.appendChild(tdGender);
 
-      // Supplier
       const tdMfr = document.createElement("td");
       tdMfr.textContent = item.manufacturer || "";
       tr.appendChild(tdMfr);
 
-      // Details row
       const detailsTr = document.createElement("tr");
       detailsTr.className = "details-row";
       detailsTr.style.display = "none";
@@ -1212,13 +1234,9 @@
       resultsBody.appendChild(detailsTr);
     });
 
-    if (totalCount > data.length) {
-      resultsCount.textContent = `Showing first ${data.length} of ${totalCount} items (refine filters to see more).`;
-    } else {
-      resultsCount.textContent = `Showing ${data.length} item${
-        data.length !== 1 ? "s" : ""
-      }`;
-    }
+    resultsCount.textContent = `Showing ${totalCount} item${
+      totalCount === 1 ? "" : "s"
+    }`;
   }
 
   function wireMultiDropdowns() {
@@ -1245,14 +1263,9 @@
       });
     });
 
-    document.addEventListener("click", () => {
-      closeAllMultiMenus();
-    });
-
+    document.addEventListener("click", () => closeAllMultiMenus());
     document.addEventListener("keydown", (e) => {
-      if (e.key === "Escape") {
-        closeAllMultiMenus();
-      }
+      if (e.key === "Escape") closeAllMultiMenus();
     });
   }
 
@@ -1268,7 +1281,6 @@
   function wireMultiCheckboxes() {
     document.querySelectorAll(".multi-select-menu").forEach((menu) => {
       const filterName = menu.getAttribute("data-filter-menu");
-
       menu.querySelectorAll('input[type="checkbox"]').forEach((cb) => {
         cb.addEventListener("change", () => {
           const val = cb.value;
@@ -1346,8 +1358,10 @@
       }
 
       hasPictureCheckbox.checked = !!state.hasPicture;
+      currentPage = 1;
       applyFilters();
     } catch (e) {
+      currentPage = 1;
       applyFilters();
     }
   }
@@ -1373,7 +1387,6 @@
 
       connectorData = data.items;
 
-      // Pin count options
       if (Array.isArray(data.pinOptions)) {
         const pinsMenu = document.querySelector(
           '.multi-select-menu[data-filter-menu="pins"]'
@@ -1399,7 +1412,6 @@
         });
       }
 
-      // Supplier options
       if (Array.isArray(data.manufacturerOptions)) {
         const mMenu = document.querySelector(
           '.multi-select-menu[data-filter-menu="manufacturer"]'
@@ -1423,6 +1435,7 @@
       }
 
       wireMultiCheckboxes();
+      currentPage = 1;
       restoreFilters();
     } catch (err) {
       console.error(err);
@@ -1439,7 +1452,6 @@
     }
   }
 
-  // Request connector via hidden iframe
   runActionBtn.addEventListener("click", () => {
     if (!selectedItem) {
       actionStatus.textContent = "Select a connector first.";
@@ -1485,12 +1497,19 @@
 
   const debouncedApply = debounce(applyFilters, 250);
   searchInput.addEventListener("input", debouncedApply);
-  locationFilter.addEventListener("input", applyFilters);
-  hasPictureCheckbox.addEventListener("change", applyFilters);
+  locationFilter.addEventListener("input", () => {
+    currentPage = 1;
+    applyFilters();
+  });
+  hasPictureCheckbox.addEventListener("change", () => {
+    currentPage = 1;
+    applyFilters();
+  });
 
   clearSearchBtn.addEventListener("click", () => {
     searchInput.value = "";
     searchInput.focus();
+    currentPage = 1;
     applyFilters();
   });
 
@@ -1499,7 +1518,22 @@
     locationFilter.value = "";
     hasPictureCheckbox.checked = false;
     clearAllMultiSelects();
+    currentPage = 1;
     applyFilters();
+  });
+
+  prevPageBtn.addEventListener("click", () => {
+    if (currentPage > 1) {
+      currentPage--;
+      applyFilters();
+    }
+  });
+
+  nextPageBtn.addEventListener("click", () => {
+    if (currentPage < lastTotalPages) {
+      currentPage++;
+      applyFilters();
+    }
   });
 
   document.querySelectorAll("th.sortable").forEach((th) => {
@@ -1511,6 +1545,7 @@
         currentSort.key = key;
         currentSort.dir = "asc";
       }
+      currentPage = 1;
       applyFilters();
     });
   });
