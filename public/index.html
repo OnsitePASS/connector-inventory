@@ -765,7 +765,8 @@
     </div>
   </div>
 
-  <script>
+ <script>
+  // ================== CONSTANTS / STATE ==================
   const DATA_URL = "/.netlify/functions/get-connectors";
   const REQUEST_URL =
     "https://script.google.com/macros/s/AKfycbzQISzKogNh6a9h3x4Ei6nVK2hYRQkUJNpra0YTY4KcrPDeamps-4rAm67NhMId_DAj/exec";
@@ -781,6 +782,7 @@
   let openDetailsRow = null;
   let openExpander = null;
 
+  // ===== DOM refs =====
   const searchInput = document.getElementById("searchInput");
   const clearSearchBtn = document.getElementById("clearSearchBtn");
   const locationFilter = document.getElementById("locationFilter");
@@ -815,6 +817,8 @@
     oem: new Set(),
   };
 
+  // ================== HELPERS ==================
+
   function qtyClass(qty) {
     if (qty <= 0) return "qty-zero";
     if (qty <= 3) return "qty-low";
@@ -825,15 +829,43 @@
     return String(str || "").toLowerCase().replace(/\s+/g, " ").trim();
   }
 
+  // Normalise M / F / M & F from all the weird sheet variants
   function normalizeGenderValue(raw) {
     const v = normalize(raw);
     if (!v) return "";
     if (v.includes("m & f")) return "m & f";
-    if (v.includes("m") && v.includes("f") && !v.includes("male") && !v.includes("female"))
-      return "m & f";
-    if (v.startsWith("m")) return "male";
-    if (v.startsWith("f")) return "female";
+    if (v.includes("male") && v.includes("female")) return "m & f";
+    if (v === "m" || v.startsWith("male")) return "male";
+    if (v === "f" || v.startsWith("female")) return "female";
+    if (v.includes("m") && v.includes("f")) return "m & f";
     return v;
+  }
+
+  // Client-side safety net in case the sheet has /file/d/ or ?id= URLs
+  function normalizeDriveUrl(raw) {
+    if (!raw) return "";
+    let str = String(raw).trim();
+    // strip any quotes that might come from sheets
+    str = str.replace(/^['"]+|['"]+$/g, "");
+
+    // If it's not a Drive URL just return it
+    if (!str.includes("drive.google.com")) return str;
+
+    let id = null;
+
+    // ?id=XXXX
+    const idParamMatch = str.match(/[?&]id=([^&]+)/);
+    if (idParamMatch) id = idParamMatch[1];
+
+    // /file/d/XXXX/
+    if (!id) {
+      const fileMatch = str.match(/\/file\/d\/([^/]+)/);
+      if (fileMatch) id = fileMatch[1];
+    }
+
+    if (!id) return str;
+
+    return `https://drive.google.com/uc?export=view&id=${id}`;
   }
 
   function updateMultiLabel(filterName) {
@@ -903,10 +935,11 @@
           oem: Array.from(multiState.oem),
         },
         hasPicture: hasPictureCheckbox.checked,
+        page: currentPage,
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     } catch (e) {
-      // ignore
+      // ignore storage errors
     }
   }
 
@@ -918,6 +951,8 @@
     nextPageBtn.disabled = page >= totalPages;
     lastTotalPages = totalPages;
   }
+
+  // ================== FILTERING / SORTING / PAGING ==================
 
   function applyFilters() {
     const search = normalize(searchInput.value);
@@ -932,6 +967,7 @@
     const hasPic = hasPictureCheckbox.checked;
 
     let filtered = connectorData.filter((item) => {
+      // Search
       if (search) {
         const haystack = normalize(
           [
@@ -948,21 +984,25 @@
         if (!haystack.includes(search)) return false;
       }
 
+      // Type
       if (catsSelected.length) {
         const catNorm = normalize(item.category);
         if (!catsSelected.includes(catNorm)) return false;
       }
 
+      // Pins
       if (pinsSelected.length) {
         const pinsStr = String(item.pins ?? "");
         if (!pinsSelected.includes(pinsStr)) return false;
       }
 
+      // Gender
       if (gendersSelected.length) {
         const gNorm = normalizeGenderValue(item.gender);
         if (!gendersSelected.includes(gNorm)) return false;
       }
 
+      // Terminal size(s)
       if (termSizesSelected.length) {
         const raw = String(item.terminalSizes || "");
         const tokens = raw
@@ -973,32 +1013,38 @@
         if (!tokens.some((t) => termSizesSelected.includes(t))) return false;
       }
 
+      // Location (shop or van text)
       if (loc) {
         const combinedLoc = normalize((item.shop || "") + " " + (item.van || ""));
         if (!combinedLoc.includes(loc)) return false;
       }
 
+      // Supplier / manufacturer
       if (mfrSelected.length) {
         const mfNorm = normalize(item.manufacturer);
         if (!mfrSelected.includes(mfNorm)) return false;
       }
 
+      // OEMs
       if (oemSelected.length) {
         const itemOems = (item.oems || []).map((o) => normalize(o));
         if (!oemSelected.some((sel) => itemOems.includes(sel))) return false;
       }
 
+      // Pic only
       if (hasPic) {
-        if (!(item.picture && /^https?:\/\//.test(item.picture))) return false;
+        const picUrl = normalizeDriveUrl(item.picture);
+        if (!(picUrl && /^https?:\/\//.test(picUrl))) return false;
       }
 
       return true;
     });
 
+    // Sort
     filtered.sort((a, b) => {
       const { key, dir } = currentSort;
-      let va = a[key],
-        vb = b[key];
+      let va = a[key];
+      let vb = b[key];
 
       if (key === "pins") {
         va = Number(va) || 0;
@@ -1025,93 +1071,66 @@
     saveFilters();
   }
 
-    function createDetailsGrid(details) {
+  // ================== DETAILS GRID (TERMINALS, ETC.) ==================
+
+  function createDetailsGrid(details) {
     const grid = document.createElement("div");
     grid.className = "details-grid";
 
-    // title = "TERMINAL 1", "PRICE", etc.
-    // main  = big bold line
-    // subLeft / subRight = small line under main (we use both only for terminals)
-    const makeBlock = (title, main, subLeft, subRight) => {
-      if (!main && !subLeft && !subRight) return null;
-
+    const makeBlock = (title, main, sub) => {
+      if (!main && !sub) return null;
       const block = document.createElement("div");
       block.className = "details-term-block";
 
       const titleEl = document.createElement("div");
       titleEl.className = "details-term-title";
       titleEl.textContent = title;
+
+      const mainEl = document.createElement("div");
+      mainEl.className = "details-term-main";
+      mainEl.textContent = main || "";
+
+      const subEl = document.createElement("div");
+      subEl.className = "details-term-sub";
+      subEl.textContent = sub || "";
+
       block.appendChild(titleEl);
-
-      if (main) {
-        const mainEl = document.createElement("div");
-        mainEl.className = "details-term-main";
-        mainEl.textContent = main;
-        block.appendChild(mainEl);
-      }
-
-      if (subLeft || subRight) {
-        const row = document.createElement("div");
-        row.className = "details-term-sub-row";
-
-        const leftSpan = document.createElement("span");
-        leftSpan.textContent = subLeft || "";
-
-        const rightSpan = document.createElement("span");
-        rightSpan.textContent = subRight || "";
-
-        row.appendChild(leftSpan);
-        row.appendChild(rightSpan);
-        block.appendChild(row);
-      }
+      if (main) block.appendChild(mainEl);
+      if (sub) block.appendChild(subEl);
 
       return block;
     };
 
-    // TERMINAL 1
-    //  - main:  Y  (terminal1Code)
-    //  - left:  W  (terminal1Tub)
-    //  - right: X  (terminal1Range, e.g. "T:1-4")
+    // Terminal 1: Y (code), W + X (locations)
     const t1 = makeBlock(
       "TERMINAL 1",
-      details.terminal1Code,
-      details.terminal1Tub || "",
-      details.terminal1Range || ""
+      details.terminal1Code || "",
+      [details.terminal1LocLeft, details.terminal1LocRight].filter(Boolean).join("   ")
     );
 
-    // TERMINAL 2
-    //  - main:  AB (terminal2Code)
-    //  - left:  AD (terminal2Tub)
-    //  - right: AC (terminal2Range)
+    // Terminal 2: AB (code), AD + AC (locations)
     const t2 = makeBlock(
       "TERMINAL 2",
-      details.terminal2Code,
-      details.terminal2Tub || "",
-      details.terminal2Range || ""
+      details.terminal2Code || "",
+      [details.terminal2LocLeft, details.terminal2LocRight].filter(Boolean).join("   ")
     );
 
-    // Mating
-    const mating = makeBlock("MATING", details.mating || "", "", "");
+    const mating = makeBlock("MATING", details.mating || "", "");
 
-    // Price
     let priceText = "";
-    if (typeof details.price === "number") {
-      priceText = `$${details.price.toFixed(2)}`;
-    } else if (details.price) {
-      priceText = String(details.price);
-    }
-    const price = makeBlock("PRICE", priceText || "", "", "");
+    if (typeof details.price === "number") priceText = `$${details.price.toFixed(2)}`;
+    else if (details.price) priceText = String(details.price);
+    const price = makeBlock("PRICE", priceText, "");
 
-    // OEM columns
-    const ford   = makeBlock("FORD",         details.ford        || "", "", "");
-    const gm     = makeBlock("GM",           details.gm          || "", "", "");
-    const hk     = makeBlock("HYUNDAI/KIA",  details.hyundaiKia  || "", "", "");
-    const nissan = makeBlock("NISSAN",       details.nissan      || "", "", "");
-    const toyota = makeBlock("TOYOTA",       details.toyota      || "", "", "");
+    [t1, t2, mating, price].forEach((b) => b && grid.appendChild(b));
 
-    [t1, t2, mating, price, ford, gm, hk, nissan, toyota].forEach((b) => {
-      if (b) grid.appendChild(b);
-    });
+    // OEM flags
+    const ford = makeBlock("FORD", details.ford || "", "");
+    const gm = makeBlock("GM", details.gm || "", "");
+    const hk = makeBlock("HYUNDAI/KIA", details.hyundaiKia || "", "");
+    const nissan = makeBlock("NISSAN", details.nissan || "", "");
+    const toyota = makeBlock("TOYOTA", details.toyota || "", "");
+    [ford, gm, hk, nissan, toyota].forEach((b) => b && grid.appendChild(b));
 
     if (!grid.children.length) {
       const empty = document.createElement("div");
@@ -1123,6 +1142,7 @@
     return grid;
   }
 
+  // ================== RENDER RESULTS ==================
 
   function selectItem(item, rowEl) {
     selectedItem = item;
@@ -1155,6 +1175,7 @@
       const tr = document.createElement("tr");
       tr.className = "data-row";
 
+      // Expander
       const tdExp = document.createElement("td");
       const exp = document.createElement("span");
       exp.className = "expander";
@@ -1162,15 +1183,18 @@
       tdExp.appendChild(exp);
       tr.appendChild(tdExp);
 
+      // Pic
       const tdPic = document.createElement("td");
-      if (item.picture && /^https?:\/\//.test(item.picture)) {
+      const picUrl = normalizeDriveUrl(item.picture);
+      if (picUrl && /^https?:\/\//.test(picUrl)) {
         const img = document.createElement("img");
-        img.src = item.picture;
+        img.src = picUrl;
         img.alt = item.partNumber || "Connector";
         img.className = "thumb-img";
+        img.loading = "lazy";
         img.addEventListener("click", (e) => {
           e.stopPropagation();
-          window.open(item.picture, "_blank");
+          window.open(picUrl, "_blank");
         });
         tdPic.appendChild(img);
       } else {
@@ -1178,17 +1202,19 @@
       }
       tr.appendChild(tdPic);
 
+      // Part #
       const tdPart = document.createElement("td");
       tdPart.textContent = item.partNumber || "";
       tr.appendChild(tdPart);
 
+      // Description
       const tdDesc = document.createElement("td");
       tdDesc.textContent = item.description || "";
       tr.appendChild(tdDesc);
 
+      // Shop + qty
       const tdShop = document.createElement("td");
       tdShop.textContent = item.shop || "";
-      tdShop.className = "shop-cell";
       tr.appendChild(tdShop);
 
       const tdShopQty = document.createElement("td");
@@ -1196,12 +1222,11 @@
       shopPill.className = `qty-pill ${qtyClass(item.shopQty)}`;
       shopPill.textContent = item.shopQty;
       tdShopQty.appendChild(shopPill);
-      tdShopQty.className = "shop-qty";
       tr.appendChild(tdShopQty);
 
+      // Van + qty
       const tdVan = document.createElement("td");
       tdVan.textContent = item.van || "";
-      tdVan.className = "van-cell";
       tr.appendChild(tdVan);
 
       const tdVanQty = document.createElement("td");
@@ -1210,13 +1235,14 @@
       vanPill.className = `qty-pill ${qtyClass(vanQty)}`;
       vanPill.textContent = vanQty;
       tdVanQty.appendChild(vanPill);
-      tdVanQty.className = "van-qty";
       tr.appendChild(tdVanQty);
 
+      // Pins
       const tdPins = document.createElement("td");
       tdPins.textContent = item.pins || "";
       tr.appendChild(tdPins);
 
+      // Type
       const tdType = document.createElement("td");
       const tag = document.createElement("span");
       tag.className = "tag";
@@ -1224,16 +1250,19 @@
       tdType.appendChild(tag);
       tr.appendChild(tdType);
 
+      // Gender
       const tdGender = document.createElement("td");
       const gNorm = normalizeGenderValue(item.gender);
       tdGender.textContent =
         gNorm === "female" ? "F" : gNorm === "male" ? "M" : gNorm.toUpperCase();
       tr.appendChild(tdGender);
 
+      // Supplier
       const tdMfr = document.createElement("td");
       tdMfr.textContent = item.manufacturer || "";
       tr.appendChild(tdMfr);
 
+      // Details row
       const detailsTr = document.createElement("tr");
       detailsTr.className = "details-row";
       detailsTr.style.display = "none";
@@ -1287,6 +1316,8 @@
     }`;
   }
 
+  // ================== MULTI-SELECT WIRING ==================
+
   function wireMultiDropdowns() {
     const toggles = document.querySelectorAll(".multi-select");
     toggles.forEach((toggle) => {
@@ -1337,6 +1368,7 @@
           if (cb.checked) set.add(val);
           else set.delete(val);
           updateMultiLabel(filterName);
+          currentPage = 1;
           applyFilters();
         });
       });
@@ -1346,6 +1378,7 @@
         clearBtn.addEventListener("click", (e) => {
           e.stopPropagation();
           clearMultiSelect(filterName);
+          currentPage = 1;
           applyFilters();
         });
       }
@@ -1376,6 +1409,7 @@
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (!raw) {
+        currentPage = 1;
         applyFilters();
         return;
       }
@@ -1383,6 +1417,7 @@
 
       searchInput.value = state.search || "";
       locationFilter.value = state.location || "";
+      currentPage = state.page || 1;
 
       if (state.multi && typeof state.multi === "object") {
         Object.keys(multiState).forEach((filterName) => {
@@ -1406,13 +1441,14 @@
       }
 
       hasPictureCheckbox.checked = !!state.hasPicture;
-      currentPage = 1;
       applyFilters();
     } catch (e) {
       currentPage = 1;
       applyFilters();
     }
   }
+
+  // ================== NETWORK / DATA LOAD ==================
 
   function debounce(fn, delay) {
     let t;
@@ -1435,6 +1471,12 @@
 
       connectorData = data.items;
 
+      // quick debug to verify picture URLs
+      if (connectorData.length) {
+        console.log("Sample picture URL:", connectorData[0].picture);
+      }
+
+      // Build pins menu
       if (Array.isArray(data.pinOptions)) {
         const pinsMenu = document.querySelector(
           '.multi-select-menu[data-filter-menu="pins"]'
@@ -1460,6 +1502,7 @@
         });
       }
 
+      // Build manufacturer menu
       if (Array.isArray(data.manufacturerOptions)) {
         const mMenu = document.querySelector(
           '.multi-select-menu[data-filter-menu="manufacturer"]'
@@ -1483,7 +1526,6 @@
       }
 
       wireMultiCheckboxes();
-      currentPage = 1;
       restoreFilters();
     } catch (err) {
       console.error(err);
@@ -1499,6 +1541,8 @@
       resultsCount.textContent = "Error loading inventory";
     }
   }
+
+  // ================== ACTION BAR (REQUEST CONNECTOR) ==================
 
   runActionBtn.addEventListener("click", () => {
     if (!selectedItem) {
@@ -1543,12 +1587,20 @@
     }
   });
 
-  const debouncedApply = debounce(applyFilters, 250);
+  // ================== EVENT WIRING ==================
+
+  const debouncedApply = debounce(() => {
+    currentPage = 1;
+    applyFilters();
+  }, 250);
+
   searchInput.addEventListener("input", debouncedApply);
+
   locationFilter.addEventListener("input", () => {
     currentPage = 1;
     applyFilters();
   });
+
   hasPictureCheckbox.addEventListener("change", () => {
     currentPage = 1;
     applyFilters();
