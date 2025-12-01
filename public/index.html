@@ -727,671 +727,685 @@
   </div>
 
   <script>
-    // Netlify Function for loading inventory data
-    const DATA_URL = "/.netlify/functions/get-connectors";
+  // === CONFIG ===
+  const DATA_URL = "/.netlify/functions/get-connectors"; // Netlify Function
+  const REQUEST_URL =
+    "https://script.google.com/macros/s/AKfycbzQISzKogNh6a9h3x4Ei6nVK2hYRQkUJNpra0YTY4KcrPDeamps-4rAm67NhMId_DAj/exec";
+  const STORAGE_KEY = "connectorInventoryFiltersV1";
 
-    // Google Apps Script for "Request this connector"
-    const REQUEST_URL =
-      "https://script.google.com/macros/s/AKfycbzQISzKogNh6a9h3x4Ei6nVK2hYRQkUJNpra0YTY4KcrPDeamps-4rAm67NhMId_DAj/exec";
+  // === STATE ===
+  let connectorData = [];
+  let currentSort = { key: "partNumber", dir: "asc" };
+  let selectedItem = null;
+  let openDetailsRow = null;
+  let openExpander = null;
 
-    const STORAGE_KEY = "connectorInventoryFiltersV1";
+  // === DOM ELEMENTS ===
+  const searchInput = document.getElementById("searchInput");
+  const clearSearchBtn = document.getElementById("clearSearchBtn");
+  const locationFilter = document.getElementById("locationFilter");
+  const resultsBody = document.getElementById("resultsBody");
+  const resultsCount = document.getElementById("resultsCount");
+  const resetFiltersBtn = document.getElementById("resetFiltersBtn");
 
-    let connectorData = [];
-    let currentSort = { key: "partNumber", dir: "asc" };
-    let selectedItem = null;
-    let openDetailsRow = null;
-    let openExpander = null;
+  const hasPictureCheckbox = document.getElementById("hasPictureFilter");
 
-    const searchInput = document.getElementById("searchInput");
-    const clearSearchBtn = document.getElementById("clearSearchBtn");
-    const locationFilter = document.getElementById("locationFilter");
-    const resultsBody = document.getElementById("resultsBody");
-    const resultsCount = document.getElementById("resultsCount");
-    const resetFiltersBtn = document.getElementById("resetFiltersBtn");
+  const actionBar = document.getElementById("actionBar");
+  const selectedPartSpan = document.getElementById("selectedPart");
+  const actionSelect = document.getElementById("actionSelect");
+  const runActionBtn = document.getElementById("runActionBtn");
+  const actionStatus = document.getElementById("actionStatus");
 
-    const hasPictureCheckbox = document.getElementById("hasPictureFilter");
+  const categoryLabel = document.getElementById("categoryLabel");
+  const pinsLabel = document.getElementById("pinsLabel");
+  const genderLabel = document.getElementById("genderLabel");
+  const termSizeLabel = document.getElementById("termSizeLabel");
+  const manufacturerLabel = document.getElementById("manufacturerLabel");
+  const oemLabel = document.getElementById("oemLabel");
 
-    const actionBar = document.getElementById("actionBar");
-    const selectedPartSpan = document.getElementById("selectedPart");
-    const actionSelect = document.getElementById("actionSelect");
-    const runActionBtn = document.getElementById("runActionBtn");
-    const actionStatus = document.getElementById("actionStatus");
+  const multiState = {
+    category: new Set(), // Type (Col N)
+    pins: new Set(), // Pins (Col M)
+    gender: new Set(), // Gender (Col L)
+    termSize: new Set(), // Terminal Sizes (Col AP)
+    manufacturer: new Set(), // Supplier (Col Q)
+    oem: new Set(), // OEMs (R–V)
+  };
 
-    const categoryLabel = document.getElementById("categoryLabel");
-    const pinsLabel = document.getElementById("pinsLabel");
-    const genderLabel = document.getElementById("genderLabel");
-    const termSizeLabel = document.getElementById("termSizeLabel");
-    const manufacturerLabel = document.getElementById("manufacturerLabel");
-    const oemLabel = document.getElementById("oemLabel");
+  // === HELPERS ===
 
-    const multiState = {
-      category: new Set(),
-      pins: new Set(),
-      gender: new Set(),
-      termSize: new Set(),
-      manufacturer: new Set(),
-      oem: new Set(),
+  function normalize(str) {
+    return String(str || "")
+      .toLowerCase()
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
+  // Normalize gender cell so "M", "Male", "m" all become "male", etc.
+  function normalizeGenderCell(value) {
+    const v = normalize(value);
+    if (!v) return "";
+    if (v.includes("m & f")) return "m & f";
+    if (v === "m" || v.startsWith("male")) return "male";
+    if (v === "f" || v.startsWith("female")) return "female";
+    return v;
+  }
+
+  function qtyClass(qty) {
+    if (qty <= 0) return "qty-zero";
+    if (qty <= 3) return "qty-low";
+    return "qty-ok";
+  }
+
+  function updateMultiLabel(filterName) {
+    const set = multiState[filterName];
+    let labelEl;
+    let placeholderText;
+
+    switch (filterName) {
+      case "category":
+        labelEl = categoryLabel;
+        placeholderText = "All";
+        break;
+      case "pins":
+        labelEl = pinsLabel;
+        placeholderText = "Any";
+        break;
+      case "gender":
+        labelEl = genderLabel;
+        placeholderText = "Any";
+        break;
+      case "termSize":
+        labelEl = termSizeLabel;
+        placeholderText = "Any";
+        break;
+      case "manufacturer":
+        labelEl = manufacturerLabel;
+        placeholderText = "All";
+        break;
+      case "oem":
+        labelEl = oemLabel;
+        placeholderText = "Any";
+        break;
+      default:
+        return;
+    }
+
+    const toggle = document.querySelector(
+      `.multi-select[data-filter-toggle="${filterName}"]`
+    );
+    if (!labelEl || !toggle) return;
+
+    if (!set.size) {
+      labelEl.textContent = placeholderText;
+      labelEl.classList.add("multi-select-placeholder");
+      toggle.classList.remove("active");
+    } else if (set.size === 1) {
+      const val = Array.from(set)[0];
+      labelEl.textContent = val;
+      labelEl.classList.remove("multi-select-placeholder");
+      toggle.classList.add("active");
+    } else {
+      labelEl.textContent = `${set.size} selected`;
+      labelEl.classList.remove("multi-select-placeholder");
+      toggle.classList.add("active");
+    }
+  }
+
+  function saveFilters() {
+    try {
+      const state = {
+        search: searchInput.value || "",
+        location: locationFilter.value || "",
+        multi: {
+          category: Array.from(multiState.category),
+          pins: Array.from(multiState.pins),
+          gender: Array.from(multiState.gender),
+          termSize: Array.from(multiState.termSize),
+          manufacturer: Array.from(multiState.manufacturer),
+          oem: Array.from(multiState.oem),
+        },
+        hasPicture: hasPictureCheckbox.checked,
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    } catch (e) {
+      // ignore storage errors
+    }
+  }
+
+  function applyFilters() {
+    const search = normalize(searchInput.value);
+    const loc = normalize(locationFilter.value);
+
+    const catsSelected = Array.from(multiState.category).map(normalize);
+    const pinsSelected = Array.from(multiState.pins).map((v) => String(v));
+    const gendersSelected = Array.from(multiState.gender).map(normalize);
+    const termSizesSelected = Array.from(multiState.termSize).map(String);
+    const mfrSelected = Array.from(multiState.manufacturer).map(normalize);
+    const oemSelected = Array.from(multiState.oem).map(normalize);
+
+    const hasPic = hasPictureCheckbox.checked;
+
+    let filtered = connectorData.filter((item) => {
+      // 1. Text search
+      if (search) {
+        const haystack = normalize(
+          [
+            item.partNumber,
+            item.description,
+            item.altNumber,
+            item.vehicle,
+            item.shop,
+            item.van,
+            item.manufacturer,
+            item.gender,
+            item.terminalSizes,
+            item.passNumber,
+          ].join(" ")
+        );
+        if (!haystack.includes(search)) return false;
+      }
+
+      // 2. Type (Col N mapped to item.category)
+      if (catsSelected.length) {
+        const catNorm = normalize(item.category);
+        if (!catsSelected.includes(catNorm)) return false;
+      }
+
+      // 3. Pins (Stats!A2:A options, filters Col M → item.pins)
+      if (pinsSelected.length) {
+        const pinsStr = String(item.pins ?? "");
+        if (!pinsSelected.includes(pinsStr)) return false;
+      }
+
+      // 4. Gender (Col L) with normalized matching
+      if (gendersSelected.length) {
+        const gNorm = normalizeGenderCell(item.gender);
+        if (!gendersSelected.includes(gNorm)) return false;
+      }
+
+      // 5. Terminal Sizes (Col AP, possibly multiple values)
+      if (termSizesSelected.length) {
+        const raw = String(item.terminalSizes || "");
+        const tokens = raw
+          .split(/[,/]/)
+          .join(" ")
+          .split(/\s+/)
+          .filter(Boolean);
+        if (!tokens.some((t) => termSizesSelected.includes(t))) return false;
+      }
+
+      // 6. Location (Shop + Van; H + J)
+      if (loc) {
+        const combinedLoc = normalize((item.shop || "") + " " + (item.van || ""));
+        if (!combinedLoc.includes(loc)) return false;
+      }
+
+      // 7. Supplier (Col Q)
+      if (mfrSelected.length) {
+        const mfNorm = normalize(item.manufacturer);
+        if (!mfrSelected.includes(mfNorm)) return false;
+      }
+
+      // 8. Vehicle / OEM (Ford, GM, HyundaiKia, Nissan, Toyota columns R–V)
+      if (oemSelected.length) {
+        const itemOems = (item.oems || []).map((o) => normalize(o));
+        if (!oemSelected.some((sel) => itemOems.includes(sel))) return false;
+      }
+
+      // 9. Pic only
+      if (hasPic) {
+        if (!(item.picture && /^https?:\/\//.test(item.picture))) return false;
+      }
+
+      return true;
+    });
+
+    // Sorting
+    filtered.sort((a, b) => {
+      const { key, dir } = currentSort;
+      let va = a[key];
+      let vb = b[key];
+
+      if (key === "pins") {
+        va = Number(va) || 0;
+        vb = Number(vb) || 0;
+      } else {
+        va = String(va || "").toLowerCase();
+        vb = String(vb || "").toLowerCase();
+      }
+
+      if (va < vb) return dir === "asc" ? -1 : 1;
+      if (va > vb) return dir === "asc" ? 1 : -1;
+      return 0;
+    });
+
+    renderResults(filtered);
+    saveFilters();
+  }
+
+  function createDetailsGrid(details) {
+    const grid = document.createElement("div");
+    grid.className = "details-grid";
+
+    const makeBlock = (title, main, sub) => {
+      if (!main && !sub) return null;
+      const block = document.createElement("div");
+      block.className = "details-term-block";
+
+      const titleEl = document.createElement("div");
+      titleEl.className = "details-term-title";
+      titleEl.textContent = title;
+
+      const mainEl = document.createElement("div");
+      mainEl.className = "details-term-main";
+      mainEl.textContent = main || "";
+
+      const subEl = document.createElement("div");
+      subEl.className = "details-term-sub";
+      subEl.textContent = sub || "";
+
+      block.appendChild(titleEl);
+      if (main) block.appendChild(mainEl);
+      if (sub) block.appendChild(subEl);
+      return block;
     };
 
-    function qtyClass(qty) {
-      if (qty <= 0) return "qty-zero";
-      if (qty <= 3) return "qty-low";
-      return "qty-ok";
+    // Row 1: Terminal 1, Terminal 2, Mating, Price
+    const t1 = makeBlock(
+      "TERMINAL 1",
+      details.terminal1Code,
+      details.terminal1Range
+    );
+    const t2 = makeBlock(
+      "TERMINAL 2",
+      details.terminal2Code,
+      details.terminal2Range
+    );
+    const mating = makeBlock("MATING", details.mating || "", "");
+
+    let priceText = "";
+    if (typeof details.price === "number") {
+      priceText = `$${details.price.toFixed(2)}`;
+    } else if (details.price) {
+      priceText = String(details.price);
+    }
+    const price = makeBlock("PRICE", priceText, "");
+
+    [t1, t2, mating, price].forEach((b) => {
+      if (b) grid.appendChild(b);
+    });
+
+    // Row 2: OEM flags
+    const ford = makeBlock("FORD", details.ford || "", "");
+    const gm = makeBlock("GM", details.gm || "", "");
+    const hk = makeBlock("HYUNDAI/KIA", details.hyundaiKia || "", "");
+    const nissan = makeBlock("NISSAN", details.nissan || "", "");
+    const toyota = makeBlock("TOYOTA", details.toyota || "", "");
+
+    [ford, gm, hk, nissan, toyota].forEach((b) => {
+      if (b) grid.appendChild(b);
+    });
+
+    if (!grid.children.length) {
+      const empty = document.createElement("div");
+      empty.className = "details-item-value";
+      empty.textContent = "No extra details.";
+      grid.appendChild(empty);
     }
 
-    function normalize(str) {
-      return String(str || "").toLowerCase().replace(/\s+/g, " ").trim();
+    return grid;
+  }
+
+  function selectItem(item, rowEl) {
+    selectedItem = item;
+    selectedPartSpan.textContent = item.partNumber || "(no part #)";
+    actionBar.style.display = "flex";
+    actionStatus.textContent = "";
+
+    document
+      .querySelectorAll(".data-row.selected-row")
+      .forEach((r) => r.classList.remove("selected-row"));
+    if (rowEl) rowEl.classList.add("selected-row");
+  }
+
+  function renderResults(data) {
+    resultsBody.innerHTML = "";
+
+    if (!data.length) {
+      const row = document.createElement("tr");
+      const cell = document.createElement("td");
+      cell.colSpan = 12;
+      cell.className = "muted";
+      cell.textContent = "No matching connectors.";
+      row.appendChild(cell);
+      resultsBody.appendChild(row);
+      resultsCount.textContent = "Showing 0 items";
+      return;
     }
 
-    function normalizeGenderCell(value) {
-      const v = normalize(value);
-      if (!v) return "";
-      if (v.includes("m & f")) return "m & f";
-      if (v === "m" || v.startsWith("male")) return "male";
-      if (v === "f" || v.startsWith("female")) return "female";
-      return v;
-    }
+    data.forEach((item) => {
+      const tr = document.createElement("tr");
+      tr.className = "data-row";
 
-    function updateMultiLabel(filterName) {
-      const set = multiState[filterName];
-      let labelEl;
-      let placeholderText;
+      // Expander
+      const tdExp = document.createElement("td");
+      const exp = document.createElement("span");
+      exp.className = "expander";
+      exp.textContent = "▸";
+      tdExp.appendChild(exp);
+      tr.appendChild(tdExp);
 
-      switch (filterName) {
-        case "category":
-          labelEl = categoryLabel;
-          placeholderText = "All";
-          break;
-        case "pins":
-          labelEl = pinsLabel;
-          placeholderText = "Any";
-          break;
-        case "gender":
-          labelEl = genderLabel;
-          placeholderText = "Any";
-          break;
-        case "termSize":
-          labelEl = termSizeLabel;
-          placeholderText = "Any";
-          break;
-        case "manufacturer":
-          labelEl = manufacturerLabel;
-          placeholderText = "All";
-          break;
-        case "oem":
-          labelEl = oemLabel;
-          placeholderText = "Any";
-          break;
-      }
-
-      const toggle = document.querySelector(
-        `.multi-select[data-filter-toggle="${filterName}"]`
-      );
-      if (!labelEl || !toggle) return;
-
-      if (!set.size) {
-        labelEl.textContent = placeholderText;
-        labelEl.classList.add("multi-select-placeholder");
-        toggle.classList.remove("active");
-      } else if (set.size === 1) {
-        const val = Array.from(set)[0];
-        labelEl.textContent = val;
-        labelEl.classList.remove("multi-select-placeholder");
-        toggle.classList.add("active");
+      // Pic
+      const tdPic = document.createElement("td");
+      if (item.picture && /^https?:\/\//.test(item.picture)) {
+        const img = document.createElement("img");
+        img.src = item.picture;
+        img.alt = item.partNumber || "Connector";
+        img.className = "thumb-img";
+        img.addEventListener("click", (e) => {
+          e.stopPropagation();
+          window.open(item.picture, "_blank");
+        });
+        tdPic.appendChild(img);
       } else {
-        labelEl.textContent = `${set.size} selected`;
-        labelEl.classList.remove("multi-select-placeholder");
-        toggle.classList.add("active");
+        tdPic.innerHTML = '<span class="muted">—</span>';
       }
-    }
+      tr.appendChild(tdPic);
 
-    function saveFilters() {
-      try {
-        const state = {
-          search: searchInput.value || "",
-          location: locationFilter.value || "",
-          multi: {
-            category: Array.from(multiState.category),
-            pins: Array.from(multiState.pins),
-            gender: Array.from(multiState.gender),
-            termSize: Array.from(multiState.termSize),
-            manufacturer: Array.from(multiState.manufacturer),
-            oem: Array.from(multiState.oem),
-          },
-          hasPicture: hasPictureCheckbox.checked,
-        };
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-      } catch (e) {
-        // ignore
-      }
-    }
+      // Part #
+      const tdPart = document.createElement("td");
+      tdPart.textContent = item.partNumber || "";
+      tr.appendChild(tdPart);
 
-    function applyFilters() {
-      const search = normalize(searchInput.value);
-      const loc = normalize(locationFilter.value);
+      // Description (O + P combined in backend)
+      const tdDesc = document.createElement("td");
+      tdDesc.textContent = item.description || "";
+      tr.appendChild(tdDesc);
 
-      const catsSelected = Array.from(multiState.category).map(normalize);
-      const pinsSelected = Array.from(multiState.pins).map((v) => String(v));
-      const gendersSelected = Array.from(multiState.gender).map(normalize);
-      const termSizesSelected = Array.from(multiState.termSize).map(String);
-      const mfrSelected = Array.from(multiState.manufacturer).map(normalize);
-      const oemSelected = Array.from(multiState.oem).map(normalize);
+      // Shop (H)
+      const tdShop = document.createElement("td");
+      tdShop.textContent = item.shop || "";
+      tdShop.className = "shop-cell";
+      tr.appendChild(tdShop);
 
-      const hasPic = hasPictureCheckbox.checked;
+      // Shop Qty (I)
+      const tdShopQty = document.createElement("td");
+      const shopPill = document.createElement("span");
+      shopPill.className = `qty-pill ${qtyClass(item.shopQty)}`;
+      shopPill.textContent = item.shopQty;
+      tdShopQty.appendChild(shopPill);
+      tdShopQty.className = "shop-qty";
+      tr.appendChild(tdShopQty);
 
-      let filtered = connectorData.filter((item) => {
-        // Free-text search (just use fields the backend actually provides)
-        if (search) {
-          const haystack = normalize(
-            [
-              item.partNumber,
-              item.description,
-              item.vehicle,
-              item.shop,
-              item.van,
-              item.manufacturer,
-              item.gender,
-              item.terminalSizes,
-            ].join(" ")
-          );
-          if (!haystack.includes(search)) return false;
-        }
+      // Van (J)
+      const tdVan = document.createElement("td");
+      tdVan.textContent = item.van || "";
+      tdVan.className = "van-cell";
+      tr.appendChild(tdVan);
 
-        // Type (Col N)
-        if (catsSelected.length) {
-          const catNorm = normalize(item.category);
-          if (!catsSelected.includes(catNorm)) return false;
-        }
+      // Van Qty (K)
+      const tdVanQty = document.createElement("td");
+      const vanPill = document.createElement("span");
+      const vanQty = item.vanQty;
+      vanPill.className = `qty-pill ${qtyClass(vanQty)}`;
+      vanPill.textContent = vanQty;
+      tdVanQty.appendChild(vanPill);
+      tdVanQty.className = "van-qty";
+      tr.appendChild(tdVanQty);
 
-        // Pins (Stats!A2:A → Col M)
-        if (pinsSelected.length) {
-          const pinsStr = String(item.pins ?? "");
-          if (!pinsSelected.includes(pinsStr)) return false;
-        }
+      // Pins (M)
+      const tdPins = document.createElement("td");
+      tdPins.textContent = item.pins || "";
+      tr.appendChild(tdPins);
 
-        // Gender (Col L)
-        if (gendersSelected.length) {
-          const gNorm = normalizeGenderCell(item.gender);
-          if (!gendersSelected.includes(gNorm)) return false;
-        }
+      // Type (N)
+      const tdType = document.createElement("td");
+      const tag = document.createElement("span");
+      tag.className = "tag";
+      tag.textContent = item.category || "N/A";
+      tdType.appendChild(tag);
+      tr.appendChild(tdType);
 
-        // Terminal Size (Col AP, comma/space/slash separated)
-        if (termSizesSelected.length) {
-          const raw = String(item.terminalSizes || "");
-          const tokens = raw
-            .split(/[,/]/)
-            .join(" ")
-            .split(/\s+/)
-            .filter(Boolean);
-          if (!tokens.some((t) => termSizesSelected.includes(t))) return false;
-        }
+      // Gender (L) displayed as M / F / M&F
+      const tdGender = document.createElement("td");
+      const gNorm = normalizeGenderCell(item.gender);
+      if (gNorm === "male") tdGender.textContent = "M";
+      else if (gNorm === "female") tdGender.textContent = "F";
+      else if (gNorm === "m & f") tdGender.textContent = "M/F";
+      else tdGender.textContent = item.gender || "";
+      tr.appendChild(tdGender);
 
-        // Location (Shop or Van): H & J
-        if (loc) {
-          const combinedLoc = normalize((item.shop || "") + " " + (item.van || ""));
-          if (!combinedLoc.includes(loc)) return false;
-        }
+      // Supplier (Q)
+      const tdMfr = document.createElement("td");
+      tdMfr.textContent = item.manufacturer || "";
+      tr.appendChild(tdMfr);
 
-        // Supplier (Stats!E2:E → Col Q)
-        if (mfrSelected.length) {
-          const mfNorm = normalize(item.manufacturer);
-          if (!mfrSelected.includes(mfNorm)) return false;
-        }
+      // Details row
+      const detailsTr = document.createElement("tr");
+      detailsTr.className = "details-row";
+      detailsTr.style.display = "none";
 
-        // Vehicle / OEM (from oems array)
-        if (oemSelected.length) {
-          const itemOems = (item.oems || []).map((o) => normalize(o));
-          if (!oemSelected.some((sel) => itemOems.includes(sel))) return false;
-        }
+      const detailsTd = document.createElement("td");
+      detailsTd.colSpan = 12;
+      detailsTd.className = "details-cell";
 
-        // Pic only
-        if (hasPic) {
-          if (!(item.picture && /^https?:\/\//.test(item.picture))) return false;
-        }
+      const detailsGrid = createDetailsGrid(item.details || {});
+      detailsTd.appendChild(detailsGrid);
+      detailsTr.appendChild(detailsTd);
 
-        return true;
-      });
-
-      // Sorting
-      filtered.sort((a, b) => {
-        const { key, dir } = currentSort;
-        let va = a[key],
-          vb = b[key];
-
-        if (key === "pins") {
-          va = Number(va) || 0;
-          vb = Number(vb) || 0;
+      const toggle = () => {
+        const isOpen = detailsTr.style.display !== "none";
+        if (!isOpen) {
+          if (openDetailsRow && openDetailsRow !== detailsTr) {
+            openDetailsRow.style.display = "none";
+          }
+          if (openExpander && openExpander !== exp) {
+            openExpander.textContent = "▸";
+          }
+          detailsTr.style.display = "";
+          exp.textContent = "▾";
+          openDetailsRow = detailsTr;
+          openExpander = exp;
         } else {
-          va = String(va || "").toLowerCase();
-          vb = String(vb || "").toLowerCase();
+          detailsTr.style.display = "none";
+          exp.textContent = "▸";
+          openDetailsRow = null;
+          openExpander = null;
         }
-
-        if (va < vb) return dir === "asc" ? -1 : 1;
-        if (va > vb) return dir === "asc" ? 1 : -1;
-        return 0;
-      });
-
-      renderResults(filtered);
-      saveFilters();
-    }
-
-    function createDetailsGrid(details) {
-      const grid = document.createElement("div");
-      grid.className = "details-grid";
-
-      const makeBlock = (title, main, sub) => {
-        if (!main && !sub) return null;
-        const block = document.createElement("div");
-        block.className = "details-term-block";
-
-        const titleEl = document.createElement("div");
-        titleEl.className = "details-term-title";
-        titleEl.textContent = title;
-
-        const mainEl = document.createElement("div");
-        mainEl.className = "details-term-main";
-        mainEl.textContent = main || "";
-
-        const subEl = document.createElement("div");
-        subEl.className = "details-term-sub";
-        subEl.textContent = sub || "";
-
-        block.appendChild(titleEl);
-        if (main) block.appendChild(mainEl);
-        if (sub) block.appendChild(subEl);
-
-        return block;
       };
 
-      // Row 1: Terminal 1, Terminal 2, Mating, Price
-      const t1 = makeBlock(
-        "TERMINAL 1",
-        details.terminal1Code,
-        details.terminal1Range
-      );
-      const t2 = makeBlock(
-        "TERMINAL 2",
-        details.terminal2Code,
-        details.terminal2Range
-      );
-      const mating = makeBlock("MATING", details.mating || "", "");
-
-      let priceText = "";
-      if (typeof details.price === "number") {
-        priceText = `$${details.price.toFixed(2)}`;
-      } else if (details.price) {
-        priceText = String(details.price);
-      }
-      const price = makeBlock("PRICE", priceText, "");
-
-      [t1, t2, mating, price].forEach((b) => {
-        if (b) grid.appendChild(b);
+      exp.addEventListener("click", (e) => {
+        e.stopPropagation();
+        toggle();
+        selectItem(item, tr);
       });
 
-      // Row 2: OEM columns
-      const ford = makeBlock("FORD", details.ford || "", "");
-      const gm = makeBlock("GM", details.gm || "", "");
-      const hk = makeBlock("HYUNDAI/KIA", details.hyundaiKia || "", "");
-      const nissan = makeBlock("NISSAN", details.nissan || "", "");
-      const toyota = makeBlock("TOYOTA", details.toyota || "", "");
-
-      [ford, gm, hk, nissan, toyota].forEach((b) => {
-        if (b) grid.appendChild(b);
+      tr.addEventListener("click", () => {
+        toggle();
+        selectItem(item, tr);
       });
 
-      if (!grid.children.length) {
-        const empty = document.createElement("div");
-        empty.className = "details-item-value";
-        empty.textContent = "No extra details.";
-        grid.appendChild(empty);
-      }
+      resultsBody.appendChild(tr);
+      resultsBody.appendChild(detailsTr);
+    });
 
-      return grid;
+    resultsCount.textContent = `Showing ${data.length} item${
+      data.length !== 1 ? "s" : ""
+    }`;
+  }
+
+  function wireMultiDropdowns() {
+    const toggles = document.querySelectorAll(".multi-select");
+    toggles.forEach((toggle) => {
+      const filterName = toggle.getAttribute("data-filter-toggle");
+      toggle.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const isOpen = toggle.classList.contains("open");
+        closeAllMultiMenus();
+        if (!isOpen) {
+          toggle.classList.add("open");
+          const menu = document.querySelector(
+            `.multi-select-menu[data-filter-menu="${filterName}"]`
+          );
+          if (menu) menu.classList.add("open");
+        }
+      });
+    });
+
+    document.querySelectorAll(".multi-select-menu").forEach((menu) => {
+      menu.addEventListener("click", (e) => {
+        e.stopPropagation();
+      });
+    });
+
+    document.addEventListener("click", () => {
+      closeAllMultiMenus();
+    });
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+        closeAllMultiMenus();
+      }
+    });
+  }
+
+  function closeAllMultiMenus() {
+    document
+      .querySelectorAll(".multi-select")
+      .forEach((el) => el.classList.remove("open"));
+    document
+      .querySelectorAll(".multi-select-menu")
+      .forEach((el) => el.classList.remove("open"));
+  }
+
+  function wireMultiCheckboxes() {
+    document.querySelectorAll(".multi-select-menu").forEach((menu) => {
+      const filterName = menu.getAttribute("data-filter-menu");
+
+      menu.querySelectorAll('input[type="checkbox"]').forEach((cb) => {
+        cb.addEventListener("change", () => {
+          const val = cb.value;
+          const set = multiState[filterName];
+          if (!set) return;
+          if (cb.checked) set.add(val);
+          else set.delete(val);
+
+          updateMultiLabel(filterName);
+          applyFilters();
+        });
+      });
+
+      const clearBtn = menu.querySelector(".multi-select-clear");
+      if (clearBtn) {
+        clearBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          clearMultiSelect(filterName);
+          applyFilters();
+        });
+      }
+    });
+  }
+
+  function clearMultiSelect(filterName) {
+    const set = multiState[filterName];
+    if (!set) return;
+    set.clear();
+
+    const menu = document.querySelector(
+      `.multi-select-menu[data-filter-menu="${filterName}"]`
+    );
+    if (menu) {
+      menu
+        .querySelectorAll('input[type="checkbox"]')
+        .forEach((cb) => (cb.checked = false));
     }
+    updateMultiLabel(filterName);
+  }
 
-    function selectItem(item, rowEl) {
-      selectedItem = item;
-      selectedPartSpan.textContent = item.partNumber || "(no part #)";
-      actionBar.style.display = "flex";
-      actionStatus.textContent = "";
+  function clearAllMultiSelects() {
+    Object.keys(multiState).forEach((key) => clearMultiSelect(key));
+  }
 
-      document.querySelectorAll(".data-row.selected-row").forEach((r) => {
-        r.classList.remove("selected-row");
-      });
-      if (rowEl) {
-        rowEl.classList.add("selected-row");
-      }
-    }
-
-    function renderResults(data) {
-      resultsBody.innerHTML = "";
-
-      if (!data.length) {
-        const row = document.createElement("tr");
-        const cell = document.createElement("td");
-        cell.colSpan = 12;
-        cell.className = "muted";
-        cell.textContent = "No matching connectors.";
-        row.appendChild(cell);
-        resultsBody.appendChild(row);
-        resultsCount.textContent = "Showing 0 items";
+  function restoreFilters() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) {
+        applyFilters();
         return;
       }
+      const state = JSON.parse(raw);
 
-      data.forEach((item) => {
-        const tr = document.createElement("tr");
-        tr.className = "data-row";
+      searchInput.value = state.search || "";
+      locationFilter.value = state.location || "";
 
-        // Expander
-        const tdExp = document.createElement("td");
-        const exp = document.createElement("span");
-        exp.className = "expander";
-        exp.textContent = "▸";
-        tdExp.appendChild(exp);
-        tr.appendChild(tdExp);
+      if (state.multi && typeof state.multi === "object") {
+        Object.keys(multiState).forEach((filterName) => {
+          const values = state.multi[filterName];
+          if (!Array.isArray(values)) return;
+          const set = new Set(values);
+          multiState[filterName] = set;
 
-        // Pic
-        const tdPic = document.createElement("td");
-        if (item.picture && /^https?:\/\//.test(item.picture)) {
-          const img = document.createElement("img");
-          img.src = item.picture;
-          img.alt = item.partNumber || "Connector";
-          img.className = "thumb-img";
-          img.addEventListener("click", (e) => {
-            e.stopPropagation();
-            window.open(item.picture, "_blank");
-          });
-          tdPic.appendChild(img);
-        } else {
-          tdPic.innerHTML = '<span class="muted">—</span>';
-        }
-        tr.appendChild(tdPic);
-
-        // Part #
-        const tdPart = document.createElement("td");
-        tdPart.textContent = item.partNumber || "";
-        tr.appendChild(tdPart);
-
-        // Description
-        const tdDesc = document.createElement("td");
-        tdDesc.textContent = item.description || "";
-        tr.appendChild(tdDesc);
-
-        // Shop
-        const tdShop = document.createElement("td");
-        tdShop.textContent = item.shop || "";
-        tr.appendChild(tdShop);
-
-        // Shop Qty
-        const tdShopQty = document.createElement("td");
-        const shopPill = document.createElement("span");
-        shopPill.className = `qty-pill ${qtyClass(item.shopQty)}`;
-        shopPill.textContent = item.shopQty;
-        tdShopQty.appendChild(shopPill);
-        tr.appendChild(tdShopQty);
-
-        // Van
-        const tdVan = document.createElement("td");
-        tdVan.textContent = item.van || "";
-        tr.appendChild(tdVan);
-
-        // Van Qty
-        const tdVanQty = document.createElement("td");
-        const vanPill = document.createElement("span");
-        const vanQty = item.vanQty;
-        vanPill.className = `qty-pill ${qtyClass(vanQty)}`;
-        vanPill.textContent = vanQty;
-        tdVanQty.appendChild(vanPill);
-        tr.appendChild(tdVanQty);
-
-        // Pins
-        const tdPins = document.createElement("td");
-        tdPins.textContent = item.pins || "";
-        tr.appendChild(tdPins);
-
-        // Type
-        const tdType = document.createElement("td");
-        const tag = document.createElement("span");
-        tag.className = "tag";
-        tag.textContent = item.category || "N/A";
-        tdType.appendChild(tag);
-        tr.appendChild(tdType);
-
-        // Gender
-        const tdGender = document.createElement("td");
-        const g = String(item.gender || "").toLowerCase();
-        tdGender.textContent = g === "female" ? "F" : g === "male" ? "M" : "";
-        tr.appendChild(tdGender);
-
-        // Supplier
-        const tdMfr = document.createElement("td");
-        tdMfr.textContent = item.manufacturer || "";
-        tr.appendChild(tdMfr);
-
-        // Details row
-        const detailsTr = document.createElement("tr");
-        detailsTr.className = "details-row";
-        detailsTr.style.display = "none";
-
-        const detailsTd = document.createElement("td");
-        detailsTd.colSpan = 12;
-        detailsTd.className = "details-cell";
-
-        const detailsGrid = createDetailsGrid(item.details || {});
-        detailsTd.appendChild(detailsGrid);
-        detailsTr.appendChild(detailsTd);
-
-        const toggle = () => {
-          const isOpen = detailsTr.style.display !== "none";
-          if (!isOpen) {
-            if (openDetailsRow && openDetailsRow !== detailsTr) {
-              openDetailsRow.style.display = "none";
-            }
-            if (openExpander && openExpander !== exp) {
-              openExpander.textContent = "▸";
-            }
-            detailsTr.style.display = "";
-            exp.textContent = "▾";
-            openDetailsRow = detailsTr;
-            openExpander = exp;
-          } else {
-            detailsTr.style.display = "none";
-            exp.textContent = "▸";
-            openDetailsRow = null;
-            openExpander = null;
-          }
-        };
-
-        exp.addEventListener("click", (e) => {
-          e.stopPropagation();
-          toggle();
-          selectItem(item, tr);
-        });
-
-        tr.addEventListener("click", () => {
-          toggle();
-          selectItem(item, tr);
-        });
-
-        resultsBody.appendChild(tr);
-        resultsBody.appendChild(detailsTr);
-      });
-
-      resultsCount.textContent = `Showing ${data.length} item${data.length !== 1 ? "s" : ""}`;
-    }
-
-    function wireMultiDropdowns() {
-      const toggles = document.querySelectorAll(".multi-select");
-      toggles.forEach((toggle) => {
-        const filterName = toggle.getAttribute("data-filter-toggle");
-        toggle.addEventListener("click", (e) => {
-          e.stopPropagation();
-          const isOpen = toggle.classList.contains("open");
-          closeAllMultiMenus();
-          if (!isOpen) {
-            toggle.classList.add("open");
-            const menu = document.querySelector(
-              `.multi-select-menu[data-filter-menu="${filterName}"]`
-            );
-            if (menu) menu.classList.add("open");
-          }
-        });
-      });
-
-      document.querySelectorAll(".multi-select-menu").forEach((menu) => {
-        menu.addEventListener("click", (e) => {
-          e.stopPropagation();
-        });
-      });
-
-      document.addEventListener("click", () => {
-        closeAllMultiMenus();
-      });
-
-      document.addEventListener("keydown", (e) => {
-        if (e.key === "Escape") {
-          closeAllMultiMenus();
-        }
-      });
-    }
-
-    function closeAllMultiMenus() {
-      document
-        .querySelectorAll(".multi-select")
-        .forEach((el) => el.classList.remove("open"));
-      document
-        .querySelectorAll(".multi-select-menu")
-        .forEach((el) => el.classList.remove("open"));
-    }
-
-    function wireMultiCheckboxes() {
-      document.querySelectorAll(".multi-select-menu").forEach((menu) => {
-        const filterName = menu.getAttribute("data-filter-menu");
-
-        menu.querySelectorAll('input[type="checkbox"]').forEach((cb) => {
-          cb.addEventListener("change", () => {
-            const val = cb.value;
-            const set = multiState[filterName];
-            if (!set) return;
-            if (cb.checked) {
-              set.add(val);
-            } else {
-              set.delete(val);
-            }
-            updateMultiLabel(filterName);
-            applyFilters();
-          });
-        });
-
-        const clearBtn = menu.querySelector(".multi-select-clear");
-        if (clearBtn) {
-          clearBtn.addEventListener("click", (e) => {
-            e.stopPropagation();
-            clearMultiSelect(filterName);
-            applyFilters();
-          });
-        }
-      });
-    }
-
-    function clearMultiSelect(filterName) {
-      const set = multiState[filterName];
-      if (!set) return;
-      set.clear();
-
-      const menu = document.querySelector(
-        `.multi-select-menu[data-filter-menu="${filterName}"]`
-      );
-      if (menu) {
-        menu.querySelectorAll('input[type="checkbox"]').forEach((cb) => {
-          cb.checked = false;
-        });
-      }
-      updateMultiLabel(filterName);
-    }
-
-    function clearAllMultiSelects() {
-      Object.keys(multiState).forEach((key) => {
-        clearMultiSelect(key);
-      });
-    }
-
-    function restoreFilters() {
-      try {
-        const raw = localStorage.getItem(STORAGE_KEY);
-        if (!raw) {
-          applyFilters();
-          return;
-        }
-        const state = JSON.parse(raw);
-
-        searchInput.value = state.search || "";
-        locationFilter.value = state.location || "";
-
-        if (state.multi && typeof state.multi === "object") {
-          Object.keys(multiState).forEach((filterName) => {
-            const values = state.multi[filterName];
-            if (!Array.isArray(values)) return;
-            const set = new Set(values);
-            multiState[filterName] = set;
-
-            const menu = document.querySelector(
-              `.multi-select-menu[data-filter-menu="${filterName}"]`
-            );
-            if (menu) {
-              menu
-                .querySelectorAll('input[type="checkbox"]')
-                .forEach((cb) => {
-                  cb.checked = set.has(cb.value);
-                });
-            }
-            updateMultiLabel(filterName);
-          });
-        }
-
-        hasPictureCheckbox.checked = !!state.hasPicture;
-
-        applyFilters();
-      } catch (e) {
-        applyFilters();
-      }
-    }
-
-    function debounce(fn, delay) {
-      let t;
-      return (...args) => {
-        clearTimeout(t);
-        t = setTimeout(() => fn(...args), delay);
-      };
-    }
-
-    async function loadData() {
-      try {
-        resultsCount.textContent = "Loading inventory…";
-        const res = await fetch(DATA_URL);
-        if (!res.ok) throw new Error("HTTP " + res.status);
-        const data = await res.json();
-
-        if (!data || !Array.isArray(data.items)) {
-          throw new Error("Unexpected response from server");
-        }
-
-        connectorData = data.items;
-
-        // Build pin options from backend (Stats!A2:A)
-        if (Array.isArray(data.pinOptions)) {
-          const pinsMenu = document.querySelector(
-            '.multi-select-menu[data-filter-menu="pins"]'
+          const menu = document.querySelector(
+            `.multi-select-menu[data-filter-menu="${filterName}"]`
           );
+          if (menu) {
+            menu
+              .querySelectorAll('input[type="checkbox"]')
+              .forEach((cb) => {
+                cb.checked = set.has(cb.value);
+              });
+          }
+          updateMultiLabel(filterName);
+        });
+      }
+
+      hasPictureCheckbox.checked = !!state.hasPicture;
+
+      applyFilters();
+    } catch (e) {
+      applyFilters();
+    }
+  }
+
+  function debounce(fn, delay) {
+    let t;
+    return (...args) => {
+      clearTimeout(t);
+      t = setTimeout(() => fn(...args), delay);
+    };
+  }
+
+  async function loadData() {
+    try {
+      resultsCount.textContent = "Loading inventory…";
+      const res = await fetch(DATA_URL);
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      const data = await res.json();
+
+      if (!data || !Array.isArray(data.items)) {
+        throw new Error("Unexpected response from server");
+      }
+
+      connectorData = data.items;
+
+      // Pin options: Stats!A2:A
+      if (Array.isArray(data.pinOptions)) {
+        const pinsMenu = document.querySelector(
+          '.multi-select-menu[data-filter-menu="pins"]'
+        );
+        if (pinsMenu) {
           const header = pinsMenu.querySelector(".multi-select-menu-header");
           pinsMenu.innerHTML = "";
           if (header) pinsMenu.appendChild(header);
+
           const pinsSorted = [...data.pinOptions].sort((a, b) => {
-            const na = Number(a),
-              nb = Number(b);
+            const na = Number(a);
+            const nb = Number(b);
             if (!isNaN(na) && !isNaN(nb)) return na - nb;
             return String(a).localeCompare(String(b));
           });
+
           pinsSorted.forEach((val) => {
             if (!val) return;
             const label = document.createElement("label");
@@ -1403,18 +1417,22 @@
             pinsMenu.appendChild(label);
           });
         }
+      }
 
-        // Build supplier options from backend (Stats!E2:E)
-        if (Array.isArray(data.manufacturerOptions)) {
-          const mMenu = document.querySelector(
-            '.multi-select-menu[data-filter-menu="manufacturer"]'
-          );
+      // Supplier options: Stats!E2:E
+      if (Array.isArray(data.manufacturerOptions)) {
+        const mMenu = document.querySelector(
+          '.multi-select-menu[data-filter-menu="manufacturer"]'
+        );
+        if (mMenu) {
           const header = mMenu.querySelector(".multi-select-menu-header");
           mMenu.innerHTML = "";
           if (header) mMenu.appendChild(header);
+
           const mfrSorted = [...data.manufacturerOptions].sort((a, b) =>
             String(a).localeCompare(String(b))
           );
+
           mfrSorted.forEach((val) => {
             if (!val) return;
             const label = document.createElement("label");
@@ -1426,101 +1444,107 @@
             mMenu.appendChild(label);
           });
         }
-
-        wireMultiCheckboxes();
-        restoreFilters();
-      } catch (err) {
-        console.error(err);
-        resultsBody.innerHTML = "";
-        const row = document.createElement("tr");
-        const cell = document.createElement("td");
-        cell.colSpan = 12;
-        cell.className = "muted";
-        cell.textContent =
-          "Error loading data: " + (err.message || "Unknown error");
-        row.appendChild(cell);
-        resultsBody.appendChild(row);
-        resultsCount.textContent = "Error loading inventory";
       }
+
+      wireMultiCheckboxes();
+      restoreFilters();
+    } catch (err) {
+      console.error(err);
+      resultsBody.innerHTML = "";
+      const row = document.createElement("tr");
+      const cell = document.createElement("td");
+      cell.colSpan = 12;
+      cell.className = "muted";
+      cell.textContent =
+        "Error loading data: " + (err.message || "Unknown error");
+      row.appendChild(cell);
+      resultsBody.appendChild(row);
+      resultsCount.textContent = "Error loading inventory";
+    }
+  }
+
+  // === ACTION: "Request this connector" ===
+  runActionBtn.addEventListener("click", () => {
+    if (!selectedItem) {
+      actionStatus.textContent = "Select a connector first.";
+      return;
+    }
+    const action = actionSelect.value;
+    if (!action) {
+      actionStatus.textContent = "Choose an action.";
+      return;
     }
 
-    // Request connector via hidden iframe (Google Chat webhook via Apps Script)
-    runActionBtn.addEventListener("click", () => {
-      if (!selectedItem) {
-        actionStatus.textContent = "Select a connector first.";
-        return;
-      }
-      const action = actionSelect.value;
-      if (!action) {
-        actionStatus.textContent = "Choose an action.";
-        return;
-      }
-
-      if (action === "request") {
-        const params = new URLSearchParams({
-          mode: "requestConnector",
-          partNumber: selectedItem.partNumber || "",
-          description: selectedItem.description || "",
-          shop: selectedItem.shop || "",
-          shopQty: String(selectedItem.shopQty ?? ""),
-          van: selectedItem.van || "",
-          vanQty: String(selectedItem.vanQty ?? ""),
-          pins: String(selectedItem.pins ?? ""),
-          category: selectedItem.category || "",
-          manufacturer: selectedItem.manufacturer || "",
-          source: "Connector Inventory Web",
-        });
-
-        params.append("ts", Date.now().toString());
-        const url = REQUEST_URL + "?" + params.toString();
-
-        let iframe = document.getElementById("requestFrame");
-        if (!iframe) {
-          iframe = document.createElement("iframe");
-          iframe.id = "requestFrame";
-          iframe.style.display = "none";
-          document.body.appendChild(iframe);
-        }
-
-        iframe.src = url;
-        actionStatus.textContent = "Request sent to Google Chat.";
-      }
-    });
-
-    const debouncedApply = debounce(applyFilters, 250);
-    searchInput.addEventListener("input", debouncedApply);
-    locationFilter.addEventListener("input", applyFilters);
-    hasPictureCheckbox.addEventListener("change", applyFilters);
-
-    clearSearchBtn.addEventListener("click", () => {
-      searchInput.value = "";
-      searchInput.focus();
-      applyFilters();
-    });
-
-    resetFiltersBtn.addEventListener("click", () => {
-      searchInput.value = "";
-      locationFilter.value = "";
-      hasPictureCheckbox.checked = false;
-      clearAllMultiSelects();
-      applyFilters();
-    });
-
-    document.querySelectorAll("th.sortable").forEach((th) => {
-      th.addEventListener("click", () => {
-        const key = th.dataset.sort;
-        if (currentSort.key === key) {
-          currentSort.dir = currentSort.dir === "asc" ? "desc" : "asc";
-        } else {
-          currentSort.key = key;
-          currentSort.dir = "asc";
-        }
-        applyFilters();
+    if (action === "request") {
+      const params = new URLSearchParams({
+        mode: "requestConnector",
+        partNumber: selectedItem.partNumber || "",
+        description: selectedItem.description || "",
+        shop: selectedItem.shop || "",
+        shopQty: String(selectedItem.shopQty ?? ""),
+        van: selectedItem.van || "",
+        vanQty: String(selectedItem.vanQty ?? ""),
+        pins: String(selectedItem.pins ?? ""),
+        category: selectedItem.category || "",
+        manufacturer: selectedItem.manufacturer || "",
+        passNumber: selectedItem.passNumber || "",
+        source: "Connector Inventory Web",
       });
-    });
 
-    wireMultiDropdowns();
-    loadData();
-  </script>
+      params.append("ts", Date.now().toString());
+      const url = REQUEST_URL + "?" + params.toString();
+
+      let iframe = document.getElementById("requestFrame");
+      if (!iframe) {
+        iframe = document.createElement("iframe");
+        iframe.id = "requestFrame";
+        iframe.style.display = "none";
+        document.body.appendChild(iframe);
+      }
+
+      iframe.src = url;
+      actionStatus.textContent = "Request sent to Google Chat.";
+    }
+  });
+
+  // === WIRING EVENTS ===
+  const debouncedApply = debounce(applyFilters, 250);
+  searchInput.addEventListener("input", debouncedApply);
+  locationFilter.addEventListener("input", applyFilters);
+  hasPictureCheckbox.addEventListener("change", applyFilters);
+
+  clearSearchBtn.addEventListener("click", () => {
+    searchInput.value = "";
+    searchInput.focus();
+    applyFilters();
+  });
+
+  resetFiltersBtn.addEventListener("click", () => {
+    searchInput.value = "";
+    locationFilter.value = "";
+    hasPictureCheckbox.checked = false;
+    clearAllMultiSelects();
+    applyFilters();
+  });
+
+  document.querySelectorAll("th.sortable").forEach((th) => {
+    th.addEventListener("click", () => {
+      const key = th.dataset.sort;
+      if (currentSort.key === key) {
+        currentSort.dir = currentSort.dir === "asc" ? "desc" : "asc";
+      } else {
+        currentSort.key = key;
+        currentSort.dir = "asc";
+      }
+      applyFilters();
+    });
+  });
+
+  // === INIT ===
+  wireMultiDropdowns();
+  loadData();
+</script>
+
+
 </body>
 </html>
