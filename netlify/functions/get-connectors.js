@@ -9,38 +9,41 @@ function formatTermRange(raw) {
   return match ? `T:${match[1].replace(/\s+/g, "")}` : str;
 }
 
-// Normalize Google Drive URLs from AQ into a direct image URL
+// Force a direct Google Drive image URL that works in <img>
 function toDriveDirect(url) {
   if (!url) return "";
   let str = String(url).trim();
 
-  // Strip quotes if the cell is stored like '"https://..."'
+  // Strip surrounding quotes if the sheet stored it as '"https://..."'
   str = str.replace(/^['"]+|['"]+$/g, "");
 
-  // Already using drive.usercontent direct host?
-  if (str.includes("drive.usercontent.google.com")) {
-    return str;
-  }
-
-  // Only touch Google Drive URLs
+  // If it's not a Drive URL, just return as-is
   if (!str.includes("drive.google.com")) return str;
 
-  // Try id=FILE_ID first
+  // Extract the file ID from either ?id=... or /file/d/ID/ format
   let id = null;
-  const idParamMatch = str.match(/[?&]id=([^&]+)/);
-  if (idParamMatch) id = idParamMatch[1];
 
-  // Then /file/d/FILE_ID/ style
-  if (!id) {
-    const fileMatch = str.match(/\/file\/d\/([^/]+)/);
-    if (fileMatch) id = fileMatch[1];
+  // e.g. https://drive.google.com/uc?export=view&id=FILE_ID
+  const idParamMatch = str.match(/[?&]id=([^&]+)/);
+  if (idParamMatch) {
+    id = idParamMatch[1];
   }
 
+  // e.g. https://drive.google.com/file/d/FILE_ID/view
+  if (!id) {
+    const fileMatch = str.match(/\/file\/d\/([^/]+)/);
+    if (fileMatch) {
+      id = fileMatch[1];
+    }
+  }
+
+  // If we still don't have an ID, fall back to original string
   if (!id) return str;
 
-  // Use direct content host (works well in <img>)
-  return `https://drive.usercontent.google.com/uc?id=${id}&export=view`;
+  // Use the same host+path that worked in your guest window
+  return `https://drive.usercontent.google.com/download?id=${id}&export=view`;
 }
+
 
 exports.handler = async function (event) {
   try {
