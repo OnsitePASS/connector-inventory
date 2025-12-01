@@ -548,14 +548,32 @@
             <span class="multi-select-caret">▾</span>
           </div>
           <div class="multi-select-menu" data-filter-menu="termSize">
-            <div class="multi-select-menu-header">
-              <button type="button" class="multi-select-clear" data-clear="termSize">Clear</button>
-            </div>
-            <label><input type="checkbox" value="1.5"> 1.5</label>
-            <label><input type="checkbox" value="2.8"> 2.8</label>
-            <label><input type="checkbox" value="3.5"> 3.5</label>
-            <label><input type="checkbox" value="6.3"> 6.3</label>
-          </div>
+          <div class="multi-select-menu-header">
+    <button type="button" class="multi-select-clear" data-clear="termSize">Clear</button>
+  </div>
+  <label><input type="checkbox" value="0.25"> 0.25</label>
+  <label><input type="checkbox" value="0.5"> 0.5</label>
+  <label><input type="checkbox" value="0.63"> 0.63</label>
+  <label><input type="checkbox" value="0.64"> 0.64</label>
+  <label><input type="checkbox" value="1.0"> 1.0</label>
+  <label><input type="checkbox" value="1.2"> 1.2</label>
+  <label><input type="checkbox" value="1.3"> 1.3</label>
+  <label><input type="checkbox" value="1.5"> 1.5</label>
+  <label><input type="checkbox" value="1.6"> 1.6</label>
+  <label><input type="checkbox" value="1.8"> 1.8</label>
+  <label><input type="checkbox" value="2.2"> 2.2</label>
+  <label><input type="checkbox" value="2.3"> 2.3</label>
+  <label><input type="checkbox" value="2.5"> 2.5</label>
+  <label><input type="checkbox" value="2.6"> 2.6</label>
+  <label><input type="checkbox" value="2.8"> 2.8</label>
+  <label><input type="checkbox" value="4.8"> 4.8</label>
+  <label><input type="checkbox" value="6.3"> 6.3</label>
+  <label><input type="checkbox" value="7.8"> 7.8</label>
+  <label><input type="checkbox" value="8.0"> 8.0</label>
+  <label><input type="checkbox" value="9.5"> 9.5</label>
+  <label><input type="checkbox" value="12.0"> 12.0</label>
+</div>
+
         </div>
       </div>
 
@@ -589,15 +607,15 @@
             <span class="multi-select-caret">▾</span>
           </div>
           <div class="multi-select-menu" data-filter-menu="oem">
-            <div class="multi-select-menu-header">
-              <button type="button" class="multi-select-clear" data-clear="oem">Clear</button>
-            </div>
-            <label><input type="checkbox" value="Ford"> Ford</label>
-            <label><input type="checkbox" value="GM"> GM</label>
-            <label><input type="checkbox" value="Hyundai/Kia"> Hyundai/Kia</label>
-            <label><input type="checkbox" value="Nissan"> Nissan</label>
-            <label><input type="checkbox" value="Toyota"> Toyota</label>
-          </div>
+  <div class="multi-select-menu-header">
+    <button type="button" class="multi-select-clear" data-clear="oem">Clear</button>
+  </div>
+  <label><input type="checkbox" value="Ford"> Ford</label>
+  <label><input type="checkbox" value="GM"> GM</label>
+  <label><input type="checkbox" value="HyundaiKia"> Hyundai/Kia</label>
+  <label><input type="checkbox" value="Nissan"> Nissan</label>
+  <label><input type="checkbox" value="Toyota"> Toyota</label>
+</div>
         </div>
       </div>
 
@@ -607,13 +625,6 @@
           <label class="tiny-check">
             <input type="checkbox" id="hasPictureFilter" /> Pic only
           </label>
-          <label class="tiny-check">
-            <input type="checkbox" id="hasTerminalsFilter" /> Term only
-          </label>
-          <select id="stockFilter" class="stock-select">
-            <option value="">All stock</option>
-            <option value="shop">Shop &gt; 0</option>
-            <option value="van">Van &gt; 0</option>
           </select>
           <button type="button" id="resetFiltersBtn"><span>↺</span> Reset filters</button>
         </div>
@@ -750,6 +761,15 @@
       cleaned = cleaned.replace(/\s*-\s*/g, "-");
       return "T:" + cleaned;
     }
+    function normalizeGenderCell(value) {
+  const v = normalize(value);
+  if (!v) return "";
+  if (v.includes("m & f")) return "m & f";
+  if (v === "m" || v.startsWith("male")) return "male";
+  if (v === "f" || v.startsWith("female")) return "female";
+  return v;
+}
+
 
     function updateMultiLabel(filterName) {
       const set = multiState[filterName];
@@ -803,244 +823,212 @@
     }
 
     function saveFilters() {
-      try {
-        const state = {
-          search: searchInput.value || "",
-          location: locationFilter.value || "",
-          multi: {
-            category: Array.from(multiState.category),
-            pins: Array.from(multiState.pins),
-            gender: Array.from(multiState.gender),
-            termSize: Array.from(multiState.termSize),
-            manufacturer: Array.from(multiState.manufacturer),
-            oem: Array.from(multiState.oem)
-          },
-          hasPicture: hasPictureCheckbox.checked,
-          hasTerminals: hasTerminalsCheckbox.checked,
-          stockFilter: stockFilter.value || ""
-        };
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-      } catch (e) {
-        // Ignore storage errors
-      }
+  try {
+    const state = {
+      search: searchInput.value || "",
+      location: locationFilter.value || "",
+      multi: {
+        category: Array.from(multiState.category),
+        pins: Array.from(multiState.pins),
+        gender: Array.from(multiState.gender),
+        termSize: Array.from(multiState.termSize),
+        manufacturer: Array.from(multiState.manufacturer),
+        oem: Array.from(multiState.oem),
+      },
+      hasPicture: hasPictureCheckbox.checked,
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  } catch (e) {
+    // ignore
+  }
+}
+
+
+   function applyFilters() {
+  const search = normalize(searchInput.value);
+  const loc = normalize(locationFilter.value);
+
+  const catsSelected = Array.from(multiState.category).map(normalize);
+  const pinsSelected = Array.from(multiState.pins).map((v) => String(v));
+  const gendersSelected = Array.from(multiState.gender).map(normalize);
+  const termSizesSelected = Array.from(multiState.termSize).map(String);
+  const mfrSelected = Array.from(multiState.manufacturer).map(normalize);
+  const oemSelected = Array.from(multiState.oem).map(normalize);
+
+  const hasPic = hasPictureCheckbox.checked;
+
+  let filtered = connectorData.filter((item) => {
+    // Free-text search
+    if (search) {
+      const haystack = normalize(
+        [
+          item.partNumber,
+          item.description,
+          item.altNumber,
+          item.vehicle,
+          item.shop,
+          item.van,
+          item.manufacturer,
+          item.gender,
+          item.terminalSizes,
+          item.passNumber,
+        ].join(" ")
+      );
+      if (!haystack.includes(search)) return false;
     }
 
-    function applyFilters() {
-      const search = normalize(searchInput.value);
-      const loc = normalize(locationFilter.value);
-
-      const catsSelected = Array.from(multiState.category).map(normalize);
-      const pinsSelected = Array.from(multiState.pins);
-      const gendersSelected = Array.from(multiState.gender).map(normalize);
-      const termSizesSelected = Array.from(multiState.termSize);
-      const mfrSelected = Array.from(multiState.manufacturer).map(normalize);
-      const oemSelected = Array.from(multiState.oem).map(normalize);
-
-      const hasPic = hasPictureCheckbox.checked;
-      const hasTerm = hasTerminalsCheckbox.checked;
-      const stockMode = stockFilter.value;
-
-      let filtered = connectorData.filter(item => {
-        if (search) {
-          const haystack = normalize([
-            item.partNumber,
-            item.description,
-            item.altNumber,
-            item.vehicle,
-            item.shop,
-            item.van,
-            item.manufacturer,
-            item.gender,
-            item.terminalSizes,
-            item.passNumber
-          ].join(" "));
-          if (!haystack.includes(search)) return false;
-        }
-
-        if (catsSelected.length) {
-          const catNorm = normalize(item.category);
-          if (!catsSelected.includes(catNorm)) return false;
-        }
-
-        if (pinsSelected.length) {
-          const pinsStr = String(item.pins ?? "");
-          if (!pinsSelected.includes(pinsStr)) return false;
-        }
-
-        if (gendersSelected.length) {
-          const gNorm = normalize(item.gender);
-          if (!gendersSelected.includes(gNorm)) return false;
-        }
-
-        if (termSizesSelected.length) {
-          const tsRaw = String(item.terminalSizes || "");
-          const tokens = tsRaw.split(/\s+/).filter(Boolean);
-          if (!tokens.some(t => termSizesSelected.includes(t))) return false;
-        }
-
-        if (loc) {
-          const combinedLoc = normalize(item.shop + " " + item.van);
-          if (!combinedLoc.includes(loc)) return false;
-        }
-
-        if (mfrSelected.length) {
-          const mfNorm = normalize(item.manufacturer);
-          if (!mfrSelected.includes(mfNorm)) return false;
-        }
-
-        if (oemSelected.length) {
-          const vehNorm = normalize(item.vehicle);
-          if (!oemSelected.some(o => vehNorm.includes(o))) return false;
-        }
-
-        if (stockMode === "shop") {
-          if (!((Number(item.shopQty) || 0) > 0)) return false;
-        } else if (stockMode === "van") {
-          if (!((Number(item.vanQty) || 0) > 0)) return false;
-        }
-
-        if (hasPic) {
-          if (!(item.picture && /^https?:\/\//.test(item.picture))) return false;
-        }
-
-        if (hasTerm) {
-          const d = item.details || {};
-          const hasT =
-            (d.terminal1 && String(d.terminal1).trim() !== "") ||
-            (d.terminal2 && String(d.terminal2).trim() !== "");
-          if (!hasT) return false;
-        }
-
-        return true;
-      });
-
-      filtered.sort((a, b) => {
-        const { key, dir } = currentSort;
-        let va = a[key], vb = b[key];
-
-        if (key === "pins") {
-          va = Number(va) || 0;
-          vb = Number(vb) || 0;
-        } else {
-          va = String(va || "").toLowerCase();
-          vb = String(vb || "").toLowerCase();
-        }
-
-        if (va < vb) return dir === "asc" ? -1 : 1;
-        if (va > vb) return dir === "asc" ? 1 : -1;
-        return 0;
-      });
-
-      renderResults(filtered);
-      saveFilters();
+    // Type (Col L)
+    if (catsSelected.length) {
+      const catNorm = normalize(item.category);
+      if (!catsSelected.includes(catNorm)) return false;
     }
+
+    // Pins (Stats!A2:A → Col M)
+    if (pinsSelected.length) {
+      const pinsStr = String(item.pins ?? "");
+      if (!pinsSelected.includes(pinsStr)) return false;
+    }
+
+    // Gender (Col N)
+    if (gendersSelected.length) {
+      const gNorm = normalizeGenderCell(item.gender);
+      if (!gendersSelected.includes(gNorm)) return false;
+    }
+
+    // Terminal Size (Col AP, comma-separated)
+    if (termSizesSelected.length) {
+      const raw = String(item.terminalSizes || "");
+      const tokens = raw
+        .split(/[,/]/)
+        .join(" ")
+        .split(/\s+/)
+        .filter(Boolean);
+      if (!tokens.some((t) => termSizesSelected.includes(t))) return false;
+    }
+
+    // Location (Shop or Van): Columns H & J
+    if (loc) {
+      const combinedLoc = normalize((item.shop || "") + " " + (item.van || ""));
+      if (!combinedLoc.includes(loc)) return false;
+    }
+
+    // Supplier (Stats!E2:E → Col Q)
+    if (mfrSelected.length) {
+      const mfNorm = normalize(item.manufacturer);
+      if (!mfrSelected.includes(mfNorm)) return false;
+    }
+
+    // Vehicle / OEM (Ford, GM, HyundaiKia, Nissan, Toyota in R–V)
+    if (oemSelected.length) {
+      const itemOems = (item.oems || []).map((o) => normalize(o));
+      if (!oemSelected.some((sel) => itemOems.includes(sel))) return false;
+    }
+
+    // Pic only
+    if (hasPic) {
+      if (!(item.picture && /^https?:\/\//.test(item.picture))) return false;
+    }
+
+    return true;
+  });
+
+  // Sort (same as before)
+  filtered.sort((a, b) => {
+    const { key, dir } = currentSort;
+    let va = a[key],
+      vb = b[key];
+
+    if (key === "pins") {
+      va = Number(va) || 0;
+      vb = Number(vb) || 0;
+    } else {
+      va = String(va || "").toLowerCase();
+      vb = String(vb || "").toLowerCase();
+    }
+
+    if (va < vb) return dir === "asc" ? -1 : 1;
+    if (va > vb) return dir === "asc" ? 1 : -1;
+    return 0;
+  });
+
+  renderResults(filtered);
+  saveFilters();
+}
+
 
     function createDetailsGrid(details) {
-      const grid = document.createElement("div");
-      grid.className = "details-grid";
+  const grid = document.createElement("div");
+  grid.className = "details-grid";
 
-      // Terminal 1
-      if (
-        (details.terminal1 && String(details.terminal1).trim() !== "") ||
-        (details.termTub1 && String(details.termTub1).trim() !== "") ||
-        (details.termBin1 && String(details.termBin1).trim() !== "")
-      ) {
-        const block = document.createElement("div");
-        block.className = "details-term-block";
+  const makeBlock = (title, main, sub) => {
+    if (!main && !sub) return null;
+    const block = document.createElement("div");
+    block.className = "details-term-block";
 
-        const title = document.createElement("div");
-        title.className = "details-term-title";
-        title.textContent = "Terminal";
+    const titleEl = document.createElement("div");
+    titleEl.className = "details-term-title";
+    titleEl.textContent = title;
 
-        const main = document.createElement("div");
-        main.className = "details-term-main";
-        main.textContent = String(details.terminal1 || "").trim();
+    const mainEl = document.createElement("div");
+    mainEl.className = "details-term-main";
+    mainEl.textContent = main || "";
 
-        const sub = document.createElement("div");
-        sub.className = "details-term-sub";
-        const tub = String(details.termTub1 || "").trim();
-        const bin = String(details.termBin1 || "").trim();
-        sub.textContent = [
-          tub || "",
-          bin ? normalizeTerminalLocation(bin) : ""
-        ].filter(Boolean).join(" · ");
+    const subEl = document.createElement("div");
+    subEl.className = "details-term-sub";
+    subEl.textContent = sub || "";
 
-        block.appendChild(title);
-        block.appendChild(main);
-        block.appendChild(sub);
-        grid.appendChild(block);
-      }
+    block.appendChild(titleEl);
+    if (main) block.appendChild(mainEl);
+    if (sub) block.appendChild(subEl);
 
-      // Terminal 2
-      if (
-        (details.terminal2 && String(details.terminal2).trim() !== "") ||
-        (details.termBin2 && String(details.termBin2).trim() !== "") ||
-        (details.termTub2 && String(details.termTub2).trim() !== "")
-      ) {
-        const block = document.createElement("div");
-        block.className = "details-term-block";
+    return block;
+  };
 
-        const title = document.createElement("div");
-        title.className = "details-term-title";
-        title.textContent = "Terminal 2";
+  // Row 1: Terminal 1, Terminal 2, Mating, Price
+  const t1 = makeBlock(
+    "TERMINAL 1",
+    details.terminal1Code,
+    details.terminal1Range
+  );
+  const t2 = makeBlock(
+    "TERMINAL 2",
+    details.terminal2Code,
+    details.terminal2Range
+  );
+  const mating = makeBlock("MATING", details.mating || "", "");
+  let priceText = "";
+  if (typeof details.price === "number") {
+    priceText = `$${details.price.toFixed(2)}`;
+  } else if (details.price) {
+    priceText = String(details.price);
+  }
+  const price = makeBlock("PRICE", priceText, "");
 
-        const main = document.createElement("div");
-        main.className = "details-term-main";
-        main.textContent = String(details.terminal2 || "").trim();
+  [t1, t2, mating, price].forEach((b) => {
+    if (b) grid.appendChild(b);
+  });
 
-        const sub = document.createElement("div");
-        sub.className = "details-term-sub";
-        const bin2 = String(details.termBin2 || "").trim();
-        const tub2 = String(details.termTub2 || "").trim();
-        sub.textContent = [
-          bin2 ? normalizeTerminalLocation(bin2) : "",
-          tub2 || ""
-        ].filter(Boolean).join(" · ");
+  // Row 2: OEM columns
+  const ford = makeBlock("FORD", details.ford || "", "");
+  const gm = makeBlock("GM", details.gm || "", "");
+  const hk = makeBlock("HYUNDAI/KIA", details.hyundaiKia || "", "");
+  const nissan = makeBlock("NISSAN", details.nissan || "", "");
+  const toyota = makeBlock("TOYOTA", details.toyota || "", "");
 
-        block.appendChild(title);
-        block.appendChild(main);
-        block.appendChild(sub);
-        grid.appendChild(block);
-      }
+  [ford, gm, hk, nissan, toyota].forEach((b) => {
+    if (b) grid.appendChild(b);
+  });
 
-      const skipKeys = new Set([
-        "termTub1", "termBin1", "terminal1",
-        "termTub2", "termBin2", "terminal2",
-        "used"
-      ]);
+  if (!grid.children.length) {
+    const empty = document.createElement("div");
+    empty.className = "details-item-value";
+    empty.textContent = "No extra details.";
+    grid.appendChild(empty);
+  }
 
-      Object.keys(DETAIL_LABELS).forEach(key => {
-        if (skipKeys.has(key)) return;
+  return grid;
+}
 
-        const val = details[key];
-        if (val === undefined || val === null || String(val).trim() === "") return;
-
-        const item = document.createElement("div");
-
-        const labelEl = document.createElement("div");
-        labelEl.className = "details-item-label";
-        labelEl.textContent = DETAIL_LABELS[key];
-
-        const valueEl = document.createElement("div");
-        valueEl.className = "details-item-value";
-        valueEl.textContent = (key === "price" && typeof val === "number")
-          ? "$" + val.toFixed(2)
-          : String(val);
-
-        item.appendChild(labelEl);
-        item.appendChild(valueEl);
-        grid.appendChild(item);
-      });
-
-      if (!grid.children.length) {
-        const empty = document.createElement("div");
-        empty.className = "details-item-value";
-        empty.textContent = "No extra details.";
-        grid.appendChild(empty);
-      }
-
-      return grid;
-    }
 
     function selectItem(item, rowEl) {
       selectedItem = item;
@@ -1333,8 +1321,7 @@
         }
 
         hasPictureCheckbox.checked = !!state.hasPicture;
-        hasTerminalsCheckbox.checked = !!state.hasTerminals;
-        stockFilter.value = state.stockFilter || "";
+        
 
         applyFilters();
       } catch (e) {
