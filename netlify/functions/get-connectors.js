@@ -1,35 +1,37 @@
 // netlify/functions/get-connectors.js
 const { google } = require("googleapis");
 
-// Convert "Terminals #1-8" → "T:1-8"
-function formatTermRange(raw) {
-  if (!raw) return "";
-  const str = String(raw);
-  const match = str.match(/#\s*(\d+\s*-\s*\d+)/);
-  return match ? `T:${match[1].replace(/\s+/g, "")}` : str;
-}
+// ---------- Helpers ----------
 
-// Force a direct Google Drive image URL that works in <img>
-// Extract a Google Drive file ID from common URL formats
+// Extract a Google Drive file ID from common URL formats in column AQ
 function extractDriveId(url) {
   if (!url) return "";
   let str = String(url).trim();
-  str = str.replace(/^['"]+|['"]+$/g, ""); // strip quotes
+
+  // Strip surrounding quotes if they exist
+  str = str.replace(/^['"]+|['"]+$/g, "");
 
   if (!str.includes("drive.google.com")) return "";
 
-  // ?id=FILE_ID
+  // Form: ...?id=FILE_ID&...
   let m = str.match(/[?&]id=([^&]+)/);
   if (m && m[1]) return m[1];
 
-  // /file/d/FILE_ID/
+  // Form: .../file/d/FILE_ID/...
   m = str.match(/\/file\/d\/([^/]+)/);
   if (m && m[1]) return m[1];
 
   return "";
 }
 
+// Convert "Terminals #1-8" → "T:1-8"
+function formatTermRange(raw) {
+  if (!raw) return "";
+  const match = String(raw).match(/#\s*(\d+\s*-\s*\d+)/);
+  return match ? `T:${match[1].replace(/\s+/g, "")}` : String(raw);
+}
 
+// ---------- Handler ----------
 
 exports.handler = async function (event) {
   try {
@@ -37,6 +39,7 @@ exports.handler = async function (event) {
       return { statusCode: 405, body: "Method Not Allowed" };
     }
 
+    // Env vars from Netlify
     const creds = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON);
     const spreadsheetId = process.env.SHEETS_SPREADSHEET_ID;
     const mainRange =
@@ -49,12 +52,13 @@ exports.handler = async function (event) {
 
     const sheets = google.sheets({ version: "v4", auth });
 
+    // Batch get: main data + stats for pins & suppliers
     const response = await sheets.spreadsheets.values.batchGet({
       spreadsheetId,
       ranges: [
         mainRange,
-        "Stats!A2:A", // Pin counts
-        "Stats!E2:E", // Supplier list
+        "Stats!A2:A", // pin counts
+        "Stats!E2:E", // suppliers
       ],
     });
 
@@ -62,7 +66,7 @@ exports.handler = async function (event) {
     const pinStatsRows = response.data.valueRanges[1].values || [];
     const supplierStatsRows = response.data.valueRanges[2].values || [];
 
-    // Column index mapping (0-based)
+    // 0-based column indexes
     const COL = {
       partNumber: 1,     // B
       shop: 7,           // H
@@ -91,7 +95,6 @@ exports.handler = async function (event) {
       term2_tub: 29,     // AD
 
       mating: 30,        // AE
-
       price: 37,         // AL
 
       terminalSizes: 41, // AP
@@ -108,7 +111,7 @@ exports.handler = async function (event) {
       const desc2 = get(COL.desc2);
       const description = [desc1, desc2].filter(Boolean).join(" ");
 
-      // Skip totally blank / spacer rows
+      // Skip truly empty/spacer rows
       const hasData =
         partNumber ||
         description ||
@@ -119,15 +122,20 @@ exports.handler = async function (event) {
 
       if (!hasData) continue;
 
-      const rawPic = get(COL.picture);
-      const pictureUrl = toDriveDirect(rawPic);
-
+      // OEM flags → array of strings
       const oems = [];
       if (get(COL.ford)) oems.push("Ford");
       if (get(COL.gm)) oems.push("GM");
       if (get(COL.hyundaiKia)) oems.push("HyundaiKia");
       if (get(COL.nissan)) oems.push("Nissan");
       if (get(COL.toyota)) oems.push("Toyota");
+
+      // Build proxy image URL from AQ (Google Drive URL)
+      const rawPic = get(COL.picture);
+      const picId = extractDriveId(rawPic);
+      const pictureUrl = picId
+        ? `/.netlify/functions/image-proxy?id=${encodeURIComponent(picId)}`
+        : "";
 
       items.push({
         picture: pictureUrl,
@@ -149,15 +157,15 @@ exports.handler = async function (event) {
         terminalSizes: get(COL.terminalSizes),
 
         details: {
-          // Terminal 1: main code from Y, subline W (tub) + X (bin → T:1-8)
-          terminal1Code: get(COL.term1_code),
-          terminal1Tub: get(COL.term1_tub),
-          terminal1Range: formatTermRange(get(COL.term1_bin)),
+          // TERMINAL 1 (Columns Y, W, X)
+          terminal1Code: get(COL.term1_code),                // Y
+          terminal1Range: formatTermRange(get(COL.term1_bin)), // X (T:1-4 style)
+          terminal1Tub: get(COL.term1_tub),                  // W
 
-          // Terminal 2: main code from AB, subline AD (tub) + AC (bin → T:1-8)
-          terminal2Code: get(COL.term2_code),
-          terminal2Tub: get(COL.term2_tub),
-          terminal2Range: formatTermRange(get(COL.term2_bin)),
+          // TERMINAL 2 (Columns AB, AD, AC)
+          terminal2Code: get(COL.term2_code),                // AB
+          terminal2Range: formatTermRange(get(COL.term2_bin)), // AC
+          terminal2Tub: get(COL.term2_tub),                  // AD
 
           mating: get(COL.mating),
           price: get(COL.price),
@@ -171,24 +179,23 @@ exports.handler = async function (event) {
       });
     }
 
-    // Unique pin count options from Stats!A2:A
+    // Build dropdown options from Stats sheet
     const pinOptions = pinStatsRows
       .map((r) => r[0])
       .filter(Boolean)
       .filter((v, i, arr) => arr.indexOf(v) === i)
-      .sort((a, b) => Number(a) - Number(b));
+      .sort((a, b) => {
+        const na = Number(a),
+          nb = Number(b);
+        if (!isNaN(na) && !isNaN(nb)) return na - nb;
+        return String(a).localeCompare(String(b));
+      });
 
-    // Unique supplier options from Stats!E2:E
     const manufacturerOptions = supplierStatsRows
       .map((r) => r[0])
       .filter(Boolean)
       .filter((v, i, arr) => arr.indexOf(v) === i)
-      .sort();
-
-    // Quick sanity log (optional)
-    if (items.length > 0) {
-      console.log("Sample item from API:", items[0]);
-    }
+      .sort((a, b) => String(a).localeCompare(String(b)));
 
     return {
       statusCode: 200,
