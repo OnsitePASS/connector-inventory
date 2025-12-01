@@ -1,34 +1,45 @@
 // netlify/functions/get-connectors.js
 const { google } = require("googleapis");
 
-// Build a direct Google Drive image URL that works in <img>
+// Convert "Terminals #1-8" → "T:1-8"
+function formatTermRange(raw) {
+  if (!raw) return "";
+  const str = String(raw);
+  const match = str.match(/#\s*(\d+\s*-\s*\d+)/);
+  return match ? `T:${match[1].replace(/\s+/g, "")}` : str;
+}
+
+// Normalize Google Drive URLs from AQ into a direct image URL
 function toDriveDirect(url) {
   if (!url) return "";
   let str = String(url).trim();
 
-  // Strip any wrapping quotes
+  // Strip quotes if the cell is stored like '"https://..."'
   str = str.replace(/^['"]+|['"]+$/g, "");
 
-  // Extract file ID from ?id= or /d/ formats
-  const m =
-    str.match(/[?&]id=([a-zA-Z0-9_-]+)/) ||
-    str.match(/\/d\/([a-zA-Z0-9_-]+)/);
-
-  if (!m) {
-    // Not a drive URL we understand – just return as-is
+  // Already using drive.usercontent direct host?
+  if (str.includes("drive.usercontent.google.com")) {
     return str;
   }
 
-  const id = m[1];
-  // Direct content host that works in <img> without redirects
-  return `https://drive.usercontent.google.com/uc?id=${id}&export=view`;
-}
+  // Only touch Google Drive URLs
+  if (!str.includes("drive.google.com")) return str;
 
-// Convert "Terminals #1-8" → "T:1-8"
-function formatTermRange(raw) {
-  if (!raw) return "";
-  const match = String(raw).match(/#\s*(\d+\s*-\s*\d+)/);
-  return match ? `T:${match[1].replace(/\s+/g, "")}` : String(raw);
+  // Try id=FILE_ID first
+  let id = null;
+  const idParamMatch = str.match(/[?&]id=([^&]+)/);
+  if (idParamMatch) id = idParamMatch[1];
+
+  // Then /file/d/FILE_ID/ style
+  if (!id) {
+    const fileMatch = str.match(/\/file\/d\/([^/]+)/);
+    if (fileMatch) id = fileMatch[1];
+  }
+
+  if (!id) return str;
+
+  // Use direct content host (works well in <img>)
+  return `https://drive.usercontent.google.com/uc?id=${id}&export=view`;
 }
 
 exports.handler = async function (event) {
@@ -37,17 +48,8 @@ exports.handler = async function (event) {
       return { statusCode: 405, body: "Method Not Allowed" };
     }
 
-    // ---- Auth + Sheets client ----
-    const credsJson = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
+    const creds = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON);
     const spreadsheetId = process.env.SHEETS_SPREADSHEET_ID;
-
-    if (!credsJson || !spreadsheetId) {
-      throw new Error(
-        "Missing GOOGLE_SERVICE_ACCOUNT_JSON or SHEETS_SPREADSHEET_ID env vars"
-      );
-    }
-
-    const creds = JSON.parse(credsJson);
     const mainRange =
       process.env.SHEETS_RANGE || "'Connector Inventory'!A2:AZ";
 
@@ -58,23 +60,20 @@ exports.handler = async function (event) {
 
     const sheets = google.sheets({ version: "v4", auth });
 
-    // ---- Fetch data ----
     const response = await sheets.spreadsheets.values.batchGet({
       spreadsheetId,
       ranges: [
         mainRange,
-        "Stats!A2:A", // pin counts
-        "Stats!E2:E", // suppliers
+        "Stats!A2:A", // Pin counts
+        "Stats!E2:E", // Supplier list
       ],
     });
 
-    const vr = response.data.valueRanges || [];
+    const rows = response.data.valueRanges[0].values || [];
+    const pinStatsRows = response.data.valueRanges[1].values || [];
+    const supplierStatsRows = response.data.valueRanges[2].values || [];
 
-    const rows = (vr[0] && vr[0].values) || [];
-    const pinStatsRows = (vr[1] && vr[1].values) || [];
-    const supplierStatsRows = (vr[2] && vr[2].values) || [];
-
-    // ---- Column map (0-based) ----
+    // Column index mapping (0-based)
     const COL = {
       partNumber: 1,     // B
       shop: 7,           // H
@@ -110,90 +109,97 @@ exports.handler = async function (event) {
       picture: 42,       // AQ
     };
 
-    // ---- Build items ----
-    const items = rows
-      .map((row) => {
-        const get = (i) => (row && row[i] !== undefined ? row[i] : "");
+    const items = [];
 
-        const partNumber = get(COL.partNumber);
-        const desc1 = get(COL.desc1);
-        const desc2 = get(COL.desc2);
-        const description = [desc1, desc2].filter(Boolean).join(" ");
+    for (const row of rows) {
+      const get = (i) => (row[i] !== undefined ? row[i] : "");
 
-        // Skip spacer / fully empty rows
-        const hasData =
-          partNumber ||
-          description ||
-          get(COL.shop) ||
-          get(COL.van) ||
-          get(COL.pins) ||
-          get(COL.category);
+      const partNumber = get(COL.partNumber);
+      const desc1 = get(COL.desc1);
+      const desc2 = get(COL.desc2);
+      const description = [desc1, desc2].filter(Boolean).join(" ");
 
-        if (!hasData) return null;
+      // Skip totally blank / spacer rows
+      const hasData =
+        partNumber ||
+        description ||
+        get(COL.shop) ||
+        get(COL.van) ||
+        get(COL.pins) ||
+        get(COL.category);
 
-        const oems = [];
-        if (get(COL.ford)) oems.push("Ford");
-        if (get(COL.gm)) oems.push("GM");
-        if (get(COL.hyundaiKia)) oems.push("HyundaiKia");
-        if (get(COL.nissan)) oems.push("Nissan");
-        if (get(COL.toyota)) oems.push("Toyota");
+      if (!hasData) continue;
 
-        const rawPic = get(COL.picture);
-        const pictureUrl = toDriveDirect(rawPic);
+      const rawPic = get(COL.picture);
+      const pictureUrl = toDriveDirect(rawPic);
 
-        return {
-          picture: pictureUrl,
-          partNumber,
-          description,
+      const oems = [];
+      if (get(COL.ford)) oems.push("Ford");
+      if (get(COL.gm)) oems.push("GM");
+      if (get(COL.hyundaiKia)) oems.push("HyundaiKia");
+      if (get(COL.nissan)) oems.push("Nissan");
+      if (get(COL.toyota)) oems.push("Toyota");
 
-          shop: get(COL.shop),
-          shopQty: Number(get(COL.shopQty)) || 0,
-          van: get(COL.van),
-          vanQty: Number(get(COL.vanQty)) || 0,
+      items.push({
+        picture: pictureUrl,
+        partNumber,
+        description,
 
-          pins: get(COL.pins),
-          category: get(COL.category),
-          gender: get(COL.gender),
-          manufacturer: get(COL.manufacturer),
+        shop: get(COL.shop),
+        shopQty: Number(get(COL.shopQty)) || 0,
+        van: get(COL.van),
+        vanQty: Number(get(COL.vanQty)) || 0,
 
-          oems,
-          vehicle: oems.join(", "),
-          terminalSizes: get(COL.terminalSizes),
+        pins: get(COL.pins),
+        category: get(COL.category),
+        gender: get(COL.gender),
+        manufacturer: get(COL.manufacturer),
 
-          details: {
-            terminal1Code: get(COL.term1_code),
-            terminal1Range: formatTermRange(get(COL.term1_bin)),
-            terminal1Tub: get(COL.term1_tub),
+        oems,
+        vehicle: oems.join(", "),
+        terminalSizes: get(COL.terminalSizes),
 
-            terminal2Code: get(COL.term2_code),
-            terminal2Range: formatTermRange(get(COL.term2_bin)),
-            terminal2Tub: get(COL.term2_tub),
+        details: {
+          // Terminal 1: main code from Y, subline W (tub) + X (bin → T:1-8)
+          terminal1Code: get(COL.term1_code),
+          terminal1Tub: get(COL.term1_tub),
+          terminal1Range: formatTermRange(get(COL.term1_bin)),
 
-            mating: get(COL.mating),
-            price: get(COL.price),
+          // Terminal 2: main code from AB, subline AD (tub) + AC (bin → T:1-8)
+          terminal2Code: get(COL.term2_code),
+          terminal2Tub: get(COL.term2_tub),
+          terminal2Range: formatTermRange(get(COL.term2_bin)),
 
-            ford: get(COL.ford),
-            gm: get(COL.gm),
-            hyundaiKia: get(COL.hyundaiKia),
-            nissan: get(COL.nissan),
-            toyota: get(COL.toyota),
-          },
-        };
-      })
-      .filter(Boolean); // drop nulls
+          mating: get(COL.mating),
+          price: get(COL.price),
 
-    // ---- Dropdown options ----
+          ford: get(COL.ford),
+          gm: get(COL.gm),
+          hyundaiKia: get(COL.hyundaiKia),
+          nissan: get(COL.nissan),
+          toyota: get(COL.toyota),
+        },
+      });
+    }
+
+    // Unique pin count options from Stats!A2:A
     const pinOptions = pinStatsRows
       .map((r) => r[0])
       .filter(Boolean)
       .filter((v, i, arr) => arr.indexOf(v) === i)
       .sort((a, b) => Number(a) - Number(b));
 
+    // Unique supplier options from Stats!E2:E
     const manufacturerOptions = supplierStatsRows
       .map((r) => r[0])
       .filter(Boolean)
       .filter((v, i, arr) => arr.indexOf(v) === i)
       .sort();
+
+    // Quick sanity log (optional)
+    if (items.length > 0) {
+      console.log("Sample item from API:", items[0]);
+    }
 
     return {
       statusCode: 200,
