@@ -1,37 +1,11 @@
 // netlify/functions/get-connectors.js
 const { google } = require("googleapis");
 
-// Turn "Terminals #1-8" → "T:1-8"
+// Convert "Terminals #1-8" → "T:1-8"
 function formatTermRange(raw) {
   if (!raw) return "";
-  const m = String(raw).match(/#\s*(\d+\s*-\s*\d+)/);
-  return m ? `T:${m[1].replace(/\s+/g, "")}` : String(raw);
-}
-
-// Convert anything we get in AQ into a Drive download URL that works in <img>
-function normalizeDriveUrl(raw) {
-  if (!raw) return "";
-  let str = String(raw).trim();
-  str = str.replace(/^['"]+|['"]+$/g, ""); // strip quotes
-
-  if (!str.includes("drive.google.com")) return str;
-
-  let id = null;
-
-  // ?id=FILE_ID
-  const idParam = str.match(/[?&]id=([^&]+)/);
-  if (idParam) id = idParam[1];
-
-  // /file/d/FILE_ID/
-  if (!id) {
-    const fileMatch = str.match(/\/file\/d\/([^/]+)/);
-    if (fileMatch) id = fileMatch[1];
-  }
-
-  if (!id) return str;
-
-  // Use download host to avoid ORB blocking
-  return `https://drive.usercontent.google.com/download?id=${id}&export=view`;
+  const match = String(raw).match(/#\s*(\d+\s*-\s*\d+)/);
+  return match ? `T:${match[1].replace(/\s+/g, "")}` : String(raw);
 }
 
 exports.handler = async function (event) {
@@ -42,8 +16,10 @@ exports.handler = async function (event) {
 
     const creds = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON);
     const spreadsheetId = process.env.SHEETS_SPREADSHEET_ID;
+
+    // We only need through AQ (picture URL)
     const mainRange =
-      process.env.SHEETS_RANGE || "'Connector Inventory'!A2:AZ";
+      process.env.SHEETS_RANGE || "'Connector Inventory'!A2:AQ";
 
     const auth = new google.auth.GoogleAuth({
       credentials: creds,
@@ -52,22 +28,22 @@ exports.handler = async function (event) {
 
     const sheets = google.sheets({ version: "v4", auth });
 
-    const resp = await sheets.spreadsheets.values.batchGet({
+    const response = await sheets.spreadsheets.values.batchGet({
       spreadsheetId,
       ranges: [
         mainRange,
-        "Stats!A2:A",     // pin counts
-        "Stats!E2:E",     // suppliers
-        "Stats!S5:S150",  // terminal sizes
+        "Stats!A2:A",     // Pin counts
+        "Stats!E2:E",     // Supplier list
+        "Stats!S5:S150",  // Terminal Size options
       ],
     });
 
-    const rows             = resp.data.valueRanges[0].values || [];
-    const pinStatsRows     = resp.data.valueRanges[1].values || [];
-    const supplierStatsRows = resp.data.valueRanges[2].values || [];
-    const termSizeRows     = resp.data.valueRanges[3].values || [];
+    const rows = response.data.valueRanges[0].values || [];
+    const pinStatsRows = response.data.valueRanges[1].values || [];
+    const supplierStatsRows = response.data.valueRanges[2].values || [];
+    const termSizeRows = response.data.valueRanges[3].values || [];
 
-    // Column mapping (0-based)
+    // 0-based column mapping
     const COL = {
       partNumber: 1,     // B
       shop: 7,           // H
@@ -77,8 +53,8 @@ exports.handler = async function (event) {
       gender: 11,        // L
       pins: 12,          // M
       category: 13,      // N
-      desc1: 14,         // O (Description)
-      desc2: 15,         // P (Alt Number)
+      desc1: 14,         // O  (Description)
+      desc2: 15,         // P  (Alt Number)
       manufacturer: 16,  // Q
 
       ford: 17,          // R
@@ -99,7 +75,7 @@ exports.handler = async function (event) {
 
       price: 37,         // AL
 
-      terminalSizes: 41, // AP (raw terminal size text)
+      terminalSizes: 41, // AP
       picture: 42,       // AQ
     };
 
@@ -109,21 +85,17 @@ exports.handler = async function (event) {
       const get = (i) => (row[i] !== undefined ? row[i] : "");
 
       const partNumber = get(COL.partNumber);
-      const desc1 = get(COL.desc1);      // description text (Col O)
-      const altRaw = get(COL.desc2);     // Alt Number(s) (Col P)
+      const desc1 = get(COL.desc1);   // Description
+      const desc2 = get(COL.desc2);   // Alt Number(s)
 
-      // Only Col O in main description column
       const description = desc1 || "";
+      const altNumber = desc2 || "";
 
-      // Split Col P by commas -> Alt numbers array
-      const altNumbers = String(altRaw || "")
-        .split(",")
-        .map((s) => s.trim())
-        .filter(Boolean);
-
+      // Skip totally blank spacer rows
       const hasData =
         partNumber ||
         description ||
+        altNumber ||
         get(COL.shop) ||
         get(COL.van) ||
         get(COL.pins) ||
@@ -131,6 +103,7 @@ exports.handler = async function (event) {
 
       if (!hasData) continue;
 
+      // OEM flags → array
       const oems = [];
       if (get(COL.ford)) oems.push("Ford");
       if (get(COL.gm)) oems.push("GM");
@@ -138,13 +111,16 @@ exports.handler = async function (event) {
       if (get(COL.nissan)) oems.push("Nissan");
       if (get(COL.toyota)) oems.push("Toyota");
 
-      const rawPic = get(COL.picture);
-      const pictureUrl = normalizeDriveUrl(rawPic);
+      // Picture URL – leave as-is (you already store a working uc?export=view&id=... URL)
+      const pictureRaw = get(COL.picture);
+      const pictureUrl = pictureRaw ? String(pictureRaw).trim() : "";
 
       items.push({
+        // Top-level fields used by the frontend
         picture: pictureUrl,
         partNumber,
-        description,
+        description,  // from column O only
+        altNumber,    // from column P
 
         shop: get(COL.shop),
         shopQty: Number(get(COL.shopQty)) || 0,
@@ -160,19 +136,23 @@ exports.handler = async function (event) {
         vehicle: oems.join(", "),
         terminalSizes: get(COL.terminalSizes),
 
+        // Submenu / details block
         details: {
-          altNumbers,
+          // Terminal 1
+          terminal1Code: get(COL.term1_code),                     // Y
+          terminal1Tub: get(COL.term1_tub),                       // W
+          terminal1Range: formatTermRange(get(COL.term1_bin)),    // X
 
-          terminal1Code: get(COL.term1_code),
-          terminal1Tub: get(COL.term1_tub),
-          terminal1Range: get(COL.term1_bin),
-
-          terminal2Code: get(COL.term2_code),
-          terminal2Tub: get(COL.term2_tub),
-          terminal2Range: get(COL.term2_bin),
+          // Terminal 2
+          terminal2Code: get(COL.term2_code),                     // AB
+          terminal2Tub: get(COL.term2_tub),                       // AD
+          terminal2Range: formatTermRange(get(COL.term2_bin)),    // AC
 
           mating: get(COL.mating),
           price: get(COL.price),
+
+          // Alt Number for submenu
+          altNumber,
 
           ford: get(COL.ford),
           gm: get(COL.gm),
@@ -183,32 +163,34 @@ exports.handler = async function (event) {
       });
     }
 
-    const pinOptions = pinStatsRows
-      .map((r) => r[0])
-      .filter(Boolean)
-      .filter((v, i, arr) => arr.indexOf(v) === i)
-      .sort((a, b) => Number(a) - Number(b));
+    // Helper: dedupe, drop blanks
+    const dedupe = (arr) =>
+      arr.filter((v, i) => v && arr.indexOf(v) === i);
 
-    const manufacturerOptions = supplierStatsRows
-      .map((r) => r[0])
-      .filter(Boolean)
-      .filter((v, i, arr) => arr.indexOf(v) === i)
-      .sort();
+    // Pin Count options
+    const pinOptions = dedupe(pinStatsRows.map((r) => r[0])).sort((a, b) => {
+      const na = Number(a);
+      const nb = Number(b);
+      if (!isNaN(na) && !isNaN(nb)) return na - nb;
+      return String(a).localeCompare(String(b));
+    });
 
-    const termSizeOptions = termSizeRows
-      .map((r) => r[0])
-      .filter(Boolean)
-      .filter((v, i, arr) => arr.indexOf(v) === i)
-      .sort((a, b) => {
-        const na = parseFloat(a);
-        const nb = parseFloat(b);
-        if (!isNaN(na) && !isNaN(nb) && na !== nb) return na - nb;
-        return String(a).localeCompare(String(b));
-      });
+    // Supplier options
+    const manufacturerOptions = dedupe(
+      supplierStatsRows.map((r) => r[0])
+    ).sort((a, b) => String(a).localeCompare(String(b)));
+
+    // Terminal Size options (Stats!S5:S150)
+    const termSizeOptions = dedupe(termSizeRows.map((r) => r[0]));
 
     return {
       statusCode: 200,
-      body: JSON.stringify({ items, pinOptions, manufacturerOptions, termSizeOptions }),
+      body: JSON.stringify({
+        items,
+        pinOptions,
+        manufacturerOptions,
+        termSizeOptions,
+      }),
     };
   } catch (e) {
     console.error("Error in get-connectors:", e);
