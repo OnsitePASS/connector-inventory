@@ -1,4 +1,7 @@
 // netlify/functions/image-proxy.js
+//
+// Proxy a *thumbnail* from Google Drive so the Netlify
+// function response stays under the 6 MB limit.
 
 exports.handler = async (event) => {
   try {
@@ -7,15 +10,18 @@ exports.handler = async (event) => {
       return { statusCode: 400, body: "Missing id parameter" };
     }
 
-    const driveUrl =
-      "https://drive.usercontent.google.com/download?id=" +
+    // Use Drive's thumbnail endpoint instead of full download.
+    // sz=w600 gives a nice medium-sized image; you can make it
+    // smaller (w400, w300) if you want to be extra safe.
+    const driveThumbUrl =
+      "https://drive.google.com/thumbnail?id=" +
       encodeURIComponent(id) +
-      "&export=view";
+      "&sz=w600";
 
-    const resp = await fetch(driveUrl);
+    const resp = await fetch(driveThumbUrl);
 
     if (!resp.ok) {
-      console.error("Drive fetch failed:", resp.status, await resp.text());
+      console.error("Drive thumbnail fetch failed:", resp.status, await resp.text());
       return {
         statusCode: 502,
         body: "Failed to fetch image from Drive",
@@ -30,6 +36,7 @@ exports.handler = async (event) => {
       statusCode: 200,
       headers: {
         "Content-Type": contentType,
+        // Cache on browser / CDN so we don't keep re-fetching the same image
         "Cache-Control": "public, max-age=86400",
       },
       body: buffer.toString("base64"),
