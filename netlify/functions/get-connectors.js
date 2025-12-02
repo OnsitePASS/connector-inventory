@@ -1,47 +1,43 @@
 // netlify/functions/get-connectors.js
 const { google } = require("googleapis");
 
-// ---------- Helpers ----------
+// Extract a Google Drive file ID from various URL formats
+function extractDriveId(raw) {
+  if (!raw) return "";
+  const str = String(raw).trim();
 
-// Extract a Google Drive file ID from common URL formats in column AQ
-function extractDriveId(url) {
-  if (!url) return "";
-  let str = String(url).trim();
+  // ?id=FILE_ID
+  const mId = str.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+  if (mId && mId[1]) return mId[1];
 
-  // Strip surrounding quotes if they exist
-  str = str.replace(/^['"]+|['"]+$/g, "");
+  // /file/d/FILE_ID/
+  const mFile = str.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+  if (mFile && mFile[1]) return mFile[1];
 
-  if (!str.includes("drive.google.com")) return "";
-
-  // Form: ...?id=FILE_ID&...
-  let m = str.match(/[?&]id=([^&]+)/);
-  if (m && m[1]) return m[1];
-
-  // Form: .../file/d/FILE_ID/...
-  m = str.match(/\/file\/d\/([^/]+)/);
-  if (m && m[1]) return m[1];
+  // /uc?id=FILE_ID
+  const mUc = str.match(/\/uc\?[^#?]*id=([a-zA-Z0-9_-]+)/);
+  if (mUc && mUc[1]) return mUc[1];
 
   return "";
 }
 
-// Convert "Terminals #1-8" → "T:1-8"
+// Convert "Terminals #1-8" → "T:1-8" (used for the *range* text)
 function formatTermRange(raw) {
   if (!raw) return "";
   const match = String(raw).match(/#\s*(\d+\s*-\s*\d+)/);
   return match ? `T:${match[1].replace(/\s+/g, "")}` : String(raw);
 }
 
-// ---------- Handler ----------
-
-exports.handler = async function (event) {
+exports.handler = async (event) => {
   try {
     if (event.httpMethod !== "GET") {
       return { statusCode: 405, body: "Method Not Allowed" };
     }
 
-    // Env vars from Netlify
     const creds = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON);
     const spreadsheetId = process.env.SHEETS_SPREADSHEET_ID;
+
+    // Main sheet + stats sheets
     const mainRange =
       process.env.SHEETS_RANGE || "'Connector Inventory'!A2:AZ";
 
@@ -52,13 +48,12 @@ exports.handler = async function (event) {
 
     const sheets = google.sheets({ version: "v4", auth });
 
-    // Batch get: main data + stats for pins & suppliers
     const response = await sheets.spreadsheets.values.batchGet({
       spreadsheetId,
       ranges: [
         mainRange,
-        "Stats!A2:A", // pin counts
-        "Stats!E2:E", // suppliers
+        "Stats!A2:A", // Pin counts
+        "Stats!E2:E", // Supplier list
       ],
     });
 
@@ -69,6 +64,7 @@ exports.handler = async function (event) {
     // 0-based column indexes
     const COL = {
       partNumber: 1,     // B
+
       shop: 7,           // H
       shopQty: 8,        // I
       van: 9,            // J
@@ -86,19 +82,21 @@ exports.handler = async function (event) {
       nissan: 20,        // U
       toyota: 21,        // V
 
-      term1_tub: 22,     // W
-      term1_bin: 23,     // X
-      term1_code: 24,    // Y
+      term1_tub: 22,     // W  (left label under Terminal 1)
+      term1_bin: 23,     // X  (right range under Terminal 1: "Terminals #1-8")
+      term1_code: 24,    // Y  (Terminal 1 part number)
 
-      term2_code: 27,    // AB
-      term2_bin: 28,     // AC
-      term2_tub: 29,     // AD
+      // Z, AA, etc. skipped here
+      term2_code: 27,    // AB (Terminal 2 part number)
+      term2_range: 28,   // AC (right range under Terminal 2: "Terminals #1-4")
+      term2_tub: 29,     // AD (left label under Terminal 2)
 
       mating: 30,        // AE
+
       price: 37,         // AL
 
       terminalSizes: 41, // AP
-      picture: 42,       // AQ
+      picture: 42,       // AQ (Drive URL)
     };
 
     const items = [];
@@ -111,7 +109,7 @@ exports.handler = async function (event) {
       const desc2 = get(COL.desc2);
       const description = [desc1, desc2].filter(Boolean).join(" ");
 
-      // Skip truly empty/spacer rows
+      // Skip totally empty spacer rows
       const hasData =
         partNumber ||
         description ||
@@ -119,10 +117,9 @@ exports.handler = async function (event) {
         get(COL.van) ||
         get(COL.pins) ||
         get(COL.category);
-
       if (!hasData) continue;
 
-      // OEM flags → array of strings
+      // OEM flags
       const oems = [];
       if (get(COL.ford)) oems.push("Ford");
       if (get(COL.gm)) oems.push("GM");
@@ -130,7 +127,7 @@ exports.handler = async function (event) {
       if (get(COL.nissan)) oems.push("Nissan");
       if (get(COL.toyota)) oems.push("Toyota");
 
-      // Build proxy image URL from AQ (Google Drive URL)
+      // Picture: go from AQ value → Drive file ID → image-proxy URL
       const rawPic = get(COL.picture);
       const picId = extractDriveId(rawPic);
       const pictureUrl = picId
@@ -157,15 +154,15 @@ exports.handler = async function (event) {
         terminalSizes: get(COL.terminalSizes),
 
         details: {
-          // TERMINAL 1 (Columns Y, W, X)
-          terminal1Code: get(COL.term1_code),                // Y
-          terminal1Range: formatTermRange(get(COL.term1_bin)), // X (T:1-4 style)
-          terminal1Tub: get(COL.term1_tub),                  // W
+          // TERMINAL 1 block
+          terminal1Code: get(COL.term1_code),          // from Y
+          terminal1Tub: get(COL.term1_tub),            // from W (left)
+          terminal1Range: formatTermRange(get(COL.term1_bin)), // from X (right)
 
-          // TERMINAL 2 (Columns AB, AD, AC)
-          terminal2Code: get(COL.term2_code),                // AB
-          terminal2Range: formatTermRange(get(COL.term2_bin)), // AC
-          terminal2Tub: get(COL.term2_tub),                  // AD
+          // TERMINAL 2 block
+          terminal2Code: get(COL.term2_code),          // from AB
+          terminal2Tub: get(COL.term2_tub),            // from AD (left)
+          terminal2Range: formatTermRange(get(COL.term2_range)), // from AC (right)
 
           mating: get(COL.mating),
           price: get(COL.price),
@@ -179,23 +176,19 @@ exports.handler = async function (event) {
       });
     }
 
-    // Build dropdown options from Stats sheet
+    // Pin options from Stats!A2:A
     const pinOptions = pinStatsRows
       .map((r) => r[0])
       .filter(Boolean)
       .filter((v, i, arr) => arr.indexOf(v) === i)
-      .sort((a, b) => {
-        const na = Number(a),
-          nb = Number(b);
-        if (!isNaN(na) && !isNaN(nb)) return na - nb;
-        return String(a).localeCompare(String(b));
-      });
+      .sort((a, b) => Number(a) - Number(b));
 
+    // Manufacturer options from Stats!E2:E
     const manufacturerOptions = supplierStatsRows
       .map((r) => r[0])
       .filter(Boolean)
       .filter((v, i, arr) => arr.indexOf(v) === i)
-      .sort((a, b) => String(a).localeCompare(String(b)));
+      .sort();
 
     return {
       statusCode: 200,
