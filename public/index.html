@@ -698,8 +698,6 @@
   </div>
 
   <script>
-    const WEB_APP_URL =
-      "https://script.google.com/macros/s/AKfycbzQISzKogNh6a9h3x4Ei6nVK2hYRQkUJNpra0YTY4KcrPDeamps-4rAm67NhMId_DAj/exec"; // unchanged from your current version
     const DATA_URL = "/.netlify/functions/get-connectors";  // ✅ use Netlify function
     const REQUEST_URL =
     "https://script.google.com/macros/s/AKfycbzQISzKogNh6a9h3x4Ei6nVK2hYRQkUJNpra0YTY4KcrPDeamps-4rAm67NhMId_DAj/exec"; // your Chat request script
@@ -1437,7 +1435,7 @@
     async function loadData() {
       try {
         resultsCount.textContent = "Loading inventory…";
-        const res = await fetch(WEB_APP_URL);
+        const res = await fetch(DATA_URL);
         if (!res.ok) throw new Error("HTTP " + res.status);
         const data = await res.json();
 
@@ -1565,7 +1563,7 @@
         });
 
         params.append("ts", Date.now().toString());
-        const url = WEB_APP_URL + "?" + params.toString();
+        const url = DATA_URL + "?" + params.toString();
 
         let iframe = document.getElementById("requestFrame");
         if (!iframe) {
