@@ -1140,21 +1140,22 @@
         tdExp.appendChild(exp);
         tr.appendChild(tdExp);
 
-        const tdPic = document.createElement("td");
-        if (item.picture && /^https?:\/\//.test(item.picture)) {
-          const img = document.createElement("img");
-          img.src = item.picture;
-          img.alt = item.partNumber || "Connector";
-          img.className = "thumb-img";
-          img.addEventListener("click", (e) => {
-            e.stopPropagation();
-            window.open(item.picture, "_blank");
-          });
-          tdPic.appendChild(img);
-        } else {
-          tdPic.innerHTML = '<span class="muted">—</span>';
-        }
-        tr.appendChild(tdPic);
+        // Pic cell
+const tdPic = document.createElement("td");
+if (item.picture) {
+  const img = document.createElement("img");
+  img.src = item.picture;
+  img.alt = item.partNumber || "Connector";
+  img.className = "thumb-img";
+  img.addEventListener("click", (e) => {
+    e.stopPropagation();
+    window.open(item.picture, "_blank");
+  });
+  tdPic.appendChild(img);
+} else {
+  tdPic.innerHTML = '<span class="muted">—</span>';
+}
+tr.appendChild(tdPic);
 
         const tdPart = document.createElement("td");
         tdPart.textContent = item.partNumber || "";
