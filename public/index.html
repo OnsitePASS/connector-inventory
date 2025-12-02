@@ -21,31 +21,71 @@
       display: flex;
     }
 
-    /* wider page so table has more room */
+    /* Main layout: sidebar + content, centered with ~1400px max width */
     .page {
-      max-width: 1375px;       /* was 1100px */
+      max-width: 1400px;
       margin: 24px auto;
-      padding: 0 16px;
+      padding: 0 12px;
       flex: 1;
-      min-height: 100vh;
       display: flex;
+      gap: 12px;
+      min-height: calc(100vh - 48px);
     }
 
+    /* Left filter panel (~150px) */
+    .filters-panel {
+      flex: 0 0 150px;
+      max-width: 160px;
+      background: rgba(255, 255, 255, 0.98);
+      border-radius: 16px;
+      border: 1px solid rgba(148, 163, 184, 0.4);
+      box-shadow: 0 14px 35px rgba(15, 23, 42, 0.12);
+      padding: 10px 10px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      font-size: 0.78rem;
+    }
+
+    .filters-title {
+      font-size: 0.82rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #6b7280;
+      margin-bottom: 4px;
+    }
+
+    .filters-section-separator {
+      height: 1px;
+      background: #e5e7eb;
+      margin: 4px 0;
+    }
+
+    .filters-footer {
+      margin-top: 4px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    /* Right main card (table, header, pager) */
     .card {
       background: rgba(255, 255, 255, 0.98);
       border-radius: 18px;
       border: 1px solid rgba(148, 163, 184, 0.4);
       box-shadow: 0 18px 45px rgba(15, 23, 42, 0.12);
       padding: 16px 20px;
-      flex: 1;
+      flex: 1 1 auto;
       display: flex;
       flex-direction: column;
+      min-width: 0;
       min-height: 0;
     }
 
     .card-header {
       display: flex; justify-content: space-between; align-items: baseline;
-      gap: 12px; margin-bottom: 12px;
+      gap: 12px; margin-bottom: 10px;
       flex: 0 0 auto;
     }
 
@@ -55,41 +95,23 @@
       letter-spacing: 0.08em;
     }
 
-    /* Filters layout */
-    .search-row {
-      display: grid;
-      grid-template-columns: minmax(0, 2.2fr) repeat(4, minmax(0, 1fr));
-      gap: 10px;
-      margin-bottom: 8px;
-      flex: 0 0 auto;
-    }
-    .search-row.secondary {
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      margin-bottom: 10px;
-      gap: 10px;
-    }
-
-    @media (max-width: 900px) {
-      .search-row,
-      .search-row.secondary {
-        grid-template-columns: minmax(0, 1fr);
-      }
-    }
-
+    /* Fields / inputs in sidebar */
     .field {
       display: flex;
       flex-direction: column;
       gap: 4px;
-      font-size: 0.8rem;
+      font-size: 0.78rem;
       position: relative;
     }
     .field label { font-weight: 500; color: #4b5563; }
 
     .field input {
       border-radius: 999px; border: 1px solid #cbd5e1;
-      padding: 6px 10px; font-size: 0.85rem; outline: none;
+      padding: 5px 9px; font-size: 0.78rem; outline: none;
       background: #f9fafb;
       transition: border-color .15s ease, box-shadow .15s ease, background .15s ease;
+      width: 100%;
+      max-width: 100%;
     }
     .field input:focus {
       border-color: #2563eb; background: #ffffff;
@@ -97,10 +119,10 @@
     }
 
     .search-wrapper { position: relative; }
-    .search-wrapper input { padding-right: 26px; }
+    .search-wrapper input { padding-right: 22px; }
     .clear-btn {
-      position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
-      border: none; background: transparent; font-size: 14px;
+      position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+      border: none; background: transparent; font-size: 13px;
       cursor: pointer; color: #9ca3af; padding: 0; line-height: 1;
     }
     .clear-btn:hover { color: #6b7280; }
@@ -109,14 +131,16 @@
     .multi-select {
       border-radius: 999px;
       border: 1px solid #cbd5e1;
-      padding: 6px 10px;
-      font-size: 0.85rem;
+      padding: 5px 9px;
+      font-size: 0.78rem;
       background: #f9fafb;
       display: flex;
       justify-content: space-between;
       align-items: center;
       cursor: pointer;
       transition: border-color .15s ease, box-shadow .15s ease, background .15s ease;
+      width: 100%;
+      max-width: 100%;
     }
 
     .multi-select.open {
@@ -136,7 +160,7 @@
       overflow: hidden;
       text-overflow: ellipsis;
       max-width: 100%;
-      font-size: 0.8rem;
+      font-size: 0.76rem;
     }
 
     .multi-select-placeholder {
@@ -144,8 +168,8 @@
     }
 
     .multi-select-caret {
-      margin-left: 6px;
-      font-size: 0.7rem;
+      margin-left: 4px;
+      font-size: 0.65rem;
       color: #6b7280;
     }
 
@@ -196,7 +220,7 @@
       align-items: center;
       gap: 6px;
       padding: 4px 10px;
-      font-size: 0.8rem;
+      font-size: 0.78rem;
       cursor: pointer;
       white-space: nowrap;
     }
@@ -209,32 +233,6 @@
       width: 13px;
       height: 13px;
       cursor: pointer;
-    }
-
-    .toolbar {
-      display: flex; justify-content: space-between; align-items: center;
-      margin: 4px 0 6px; font-size: 0.8rem; color: #6b7280;
-      gap: 10px; flex-wrap: wrap;
-      flex: 0 0 auto;
-    }
-
-    .toolbar-right {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      flex-wrap: wrap;
-    }
-
-    .toolbar button {
-      border-radius: 999px; border: none; padding: 5px 12px;
-      font-size: 0.8rem; cursor: pointer; background: #0f172a; color: #f9fafb;
-      display: inline-flex; align-items: center; gap: 6px;
-      box-shadow: 0 8px 18px rgba(15, 23, 42, 0.25);
-      transition: transform .12s ease, box-shadow .12s ease, background .12s ease;
-    }
-    .toolbar button:hover {
-      background: #111827; transform: translateY(-1px);
-      box-shadow: 0 12px 24px rgba(15, 23, 42, 0.3);
     }
 
     .tiny-check {
@@ -254,9 +252,44 @@
     .stock-select {
       border-radius: 999px;
       border: 1px solid #cbd5e1;
-      padding: 4px 8px;
-      font-size: 0.78rem;
+      padding: 3px 8px;
+      font-size: 0.75rem;
       background: #ffffff;
+      width: 100%;
+    }
+
+    /* Toolbar repurposed as part of sidebar footer */
+    .toolbar {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 6px;
+      font-size: 0.78rem;
+      color: #6b7280;
+      flex: 0 0 auto;
+      margin: 0;
+    }
+
+    .toolbar-right {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 4px;
+      width: 100%;
+    }
+
+    .toolbar button {
+      border-radius: 999px; border: none; padding: 5px 10px;
+      font-size: 0.78rem; cursor: pointer; background: #0f172a; color: #f9fafb;
+      display: inline-flex; align-items: center; gap: 6px;
+      box-shadow: 0 8px 18px rgba(15, 23, 42, 0.25);
+      transition: transform .12s ease, box-shadow .12s ease, background .12s ease;
+      width: 100%;
+      justify-content: center;
+    }
+    .toolbar button:hover {
+      background: #111827; transform: translateY(-1px);
+      box-shadow: 0 12px 24px rgba(15, 23, 42, 0.3);
     }
 
     /* Action bar */
@@ -271,6 +304,7 @@
       background: #eff6ff;
       font-size: 0.8rem;
       flex: 0 0 auto;
+      position: relative;
     }
     .action-selected {
       font-weight: 500;
@@ -306,8 +340,19 @@
       font-size: 0.78rem;
       color: #4b5563;
     }
+    .action-close {
+      border: none;
+      background: transparent;
+      font-size: 1rem;
+      cursor: pointer;
+      color: #6b7280;
+      padding: 0 2px;
+    }
+    .action-close:hover {
+      color: #111827;
+    }
 
-    /* Pager (100 items per page) */
+    /* Pager */
     .pager {
       display: flex;
       justify-content: flex-end;
@@ -431,14 +476,6 @@
       font-size: 0.75rem;
     }
 
-    .details-item-label {
-      font-weight: 600;
-      color: #4b5563;
-    }
-    .details-item-value {
-      color: #111827;
-    }
-
     .details-term-block {
       border-radius: 10px;
       background: #f3f4f6;
@@ -473,7 +510,7 @@
       background: #fefce8;
     }
 
-    /* widen description column a bit now that page is wider */
+    /* Column widths tuned for ~1250px table area */
     thead th:nth-child(1),
     tbody td:nth-child(1) { width: 24px; max-width: 24px; }   /* expander */
     thead th:nth-child(2),
@@ -498,152 +535,280 @@
     tbody td:nth-child(11) { width: 35px; max-width: 35px; }  /* M/F */
     thead th:nth-child(12),
     tbody td:nth-child(12) { width: 85px; max-width: 85px; }  /* Supplier */
+
+    /* Modals */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.35);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 50;
+    }
+
+    .modal-backdrop.open {
+      display: flex;
+    }
+
+    .modal-card {
+      background: #ffffff;
+      border-radius: 16px;
+      padding: 14px 18px 16px;
+      box-shadow: 0 20px 45px rgba(15, 23, 42, 0.3);
+      width: 100%;
+      max-width: 620px;
+      max-height: 80vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .modal-header h2 {
+      margin: 0;
+      font-size: 1rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: #111827;
+    }
+
+    .modal-body {
+      flex: 1 1 auto;
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+
+    .modal-footer {
+      margin-top: 10px;
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+
+    .modal-field {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      margin-bottom: 8px;
+      font-size: 0.8rem;
+    }
+
+    .modal-field label {
+      font-weight: 500;
+      color: #374151;
+    }
+
+    .modal-field input,
+    .modal-field textarea {
+      border-radius: 10px;
+      border: 1px solid #d1d5db;
+      padding: 5px 8px;
+      font-size: 0.8rem;
+      outline: none;
+      background: #f9fafb;
+    }
+
+    .modal-field input:focus,
+    .modal-field textarea:focus {
+      border-color: #2563eb;
+      background: #ffffff;
+      box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.3);
+    }
+
+    .modal-hint {
+      font-size: 0.7rem;
+      color: #6b7280;
+    }
+
+    .primary-btn {
+      border-radius: 999px;
+      border: none;
+      padding: 6px 14px;
+      font-size: 0.8rem;
+      cursor: pointer;
+      background: #2563eb;
+      color: #f9fafb;
+    }
+
+    .primary-btn:hover {
+      background: #1d4ed8;
+    }
+
+    /* Basic responsive behavior: stack sidebar on narrow screens */
+    @media (max-width: 900px) {
+      .page {
+        flex-direction: column;
+      }
+      .filters-panel {
+        flex: 0 0 auto;
+        max-width: 100%;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 8px 10px;
+      }
+      .filters-footer {
+        grid-column: 1 / -1;
+      }
+    }
   </style>
 </head>
 <body>
   <div class="page">
+    <!-- LEFT FILTER PANEL -->
+    <aside class="filters-panel">
+      <div class="filters-title">Filters</div>
+
+      <!-- Search -->
+      <div class="field">
+        <label for="searchInput">Search</label>
+        <div class="search-wrapper">
+          <input id="searchInput" type="text" placeholder="Part #, desc, alt…" />
+          <button type="button" class="clear-btn" id="clearSearchBtn">&times;</button>
+        </div>
+      </div>
+
+      <!-- Type / Category -->
+      <div class="field" data-filter="category">
+        <label>Type</label>
+        <div class="multi-select" data-filter-toggle="category">
+          <span class="multi-select-label multi-select-placeholder" id="categoryLabel">All</span>
+          <span class="multi-select-caret">▾</span>
+        </div>
+        <div class="multi-select-menu" data-filter-menu="category">
+          <div class="multi-select-menu-header">
+            <button type="button" class="multi-select-clear" data-clear="category">Clear</button>
+          </div>
+          <label><input type="checkbox" value="connector"> Connector</label>
+          <label><input type="checkbox" value="terminal"> Terminal</label>
+          <label><input type="checkbox" value="accessory"> Accessory</label>
+        </div>
+      </div>
+
+      <!-- Pin Count -->
+      <div class="field" data-filter="pins">
+        <label>Pin Count</label>
+        <div class="multi-select" data-filter-toggle="pins">
+          <span class="multi-select-label multi-select-placeholder" id="pinsLabel">Any</span>
+          <span class="multi-select-caret">▾</span>
+        </div>
+        <div class="multi-select-menu" data-filter-menu="pins">
+          <div class="multi-select-menu-header">
+            <button type="button" class="multi-select-clear" data-clear="pins">Clear</button>
+          </div>
+          <!-- options filled dynamically -->
+        </div>
+      </div>
+
+      <!-- Gender -->
+      <div class="field" data-filter="gender">
+        <label>Gender</label>
+        <div class="multi-select" data-filter-toggle="gender">
+          <span class="multi-select-label multi-select-placeholder" id="genderLabel">Any</span>
+          <span class="multi-select-caret">▾</span>
+        </div>
+        <div class="multi-select-menu" data-filter-menu="gender">
+          <div class="multi-select-menu-header">
+            <button type="button" class="multi-select-clear" data-clear="gender">Clear</button>
+          </div>
+          <label><input type="checkbox" value="male"> Male</label>
+          <label><input type="checkbox" value="female"> Female</label>
+          <label><input type="checkbox" value="m & f"> M & F</label>
+        </div>
+      </div>
+
+      <!-- Terminal size -->
+      <div class="field" data-filter="termSize">
+        <label>Terminal Size</label>
+        <div class="multi-select" data-filter-toggle="termSize">
+          <span class="multi-select-label multi-select-placeholder" id="termSizeLabel">Any</span>
+          <span class="multi-select-caret">▾</span>
+        </div>
+        <div class="multi-select-menu" data-filter-menu="termSize">
+          <div class="multi-select-menu-header">
+            <button type="button" class="multi-select-clear" data-clear="termSize">Clear</button>
+          </div>
+          <!-- options filled dynamically -->
+        </div>
+      </div>
+
+      <!-- Location -->
+      <div class="field">
+        <label for="locationFilter">Location</label>
+        <input id="locationFilter" type="text" placeholder="Tub27, Van Bin…" />
+      </div>
+
+      <!-- Supplier -->
+      <div class="field" data-filter="manufacturer">
+        <label>Supplier</label>
+        <div class="multi-select" data-filter-toggle="manufacturer">
+          <span class="multi-select-label multi-select-placeholder" id="manufacturerLabel">All</span>
+          <span class="multi-select-caret">▾</span>
+        </div>
+        <div class="multi-select-menu" data-filter-menu="manufacturer">
+          <div class="multi-select-menu-header">
+            <button type="button" class="multi-select-clear" data-clear="manufacturer">Clear</button>
+          </div>
+          <!-- options filled dynamically -->
+        </div>
+      </div>
+
+      <!-- OEM / Vehicle -->
+      <div class="field" data-filter="oem">
+        <label>Vehicle / OEM</label>
+        <div class="multi-select" data-filter-toggle="oem">
+          <span class="multi-select-label multi-select-placeholder" id="oemLabel">Any</span>
+          <span class="multi-select-caret">▾</span>
+        </div>
+        <div class="multi-select-menu" data-filter-menu="oem">
+          <div class="multi-select-menu-header">
+            <button type="button" class="multi-select-clear" data-clear="oem">Clear</button>
+          </div>
+          <label><input type="checkbox" value="Ford"> Ford</label>
+          <label><input type="checkbox" value="GM"> GM</label>
+          <label><input type="checkbox" value="Hyundai/Kia"> Hyundai/Kia</label>
+          <label><input type="checkbox" value="Nissan"> Nissan</label>
+          <label><input type="checkbox" value="Toyota"> Toyota</label>
+        </div>
+      </div>
+
+      <div class="filters-section-separator"></div>
+
+      <!-- Footer filters / controls -->
+      <div class="filters-footer">
+        <div class="toolbar">
+          <div id="resultsCount">Loading inventory…</div>
+          <div class="toolbar-right">
+            <label class="tiny-check">
+              <input type="checkbox" id="hasPictureFilter" /> Pic only
+            </label>
+            <label class="tiny-check">
+              <input type="checkbox" id="hasTerminalsFilter" /> Term only
+            </label>
+            <select id="stockFilter" class="stock-select">
+              <option value="">All stock</option>
+              <option value="shop">Shop &gt; 0</option>
+              <option value="van">Van &gt; 0</option>
+            </select>
+          </div>
+        </div>
+        <button type="button" id="resetFiltersBtn"><span>↺</span> Reset filters</button>
+      </div>
+    </aside>
+
+    <!-- RIGHT MAIN CONTENT -->
     <div class="card">
       <div class="card-header">
         <div>
-          <h1>Connector Inventory - Multi-Select_Updating</h1>
+          <h1>Connector Inventory</h1>
           <span>Search · Filter · Locate</span>
         </div>
         <div style="font-size:0.8rem; color:#6b7280;">OnsitePASS · Internal</div>
-      </div>
-
-      <!-- Primary filters -->
-      <div class="search-row">
-        <div class="field">
-          <label for="searchInput">Search</label>
-          <div class="search-wrapper">
-            <input id="searchInput" type="text" placeholder="Part #, description, alt #, notes…" />
-            <button type="button" class="clear-btn" id="clearSearchBtn">&times;</button>
-          </div>
-        </div>
-
-        <!-- Type / Category multi-select -->
-        <div class="field" data-filter="category">
-          <label>Type</label>
-          <div class="multi-select" data-filter-toggle="category">
-            <span class="multi-select-label multi-select-placeholder" id="categoryLabel">All</span>
-            <span class="multi-select-caret">▾</span>
-          </div>
-          <div class="multi-select-menu" data-filter-menu="category">
-            <div class="multi-select-menu-header">
-              <button type="button" class="multi-select-clear" data-clear="category">Clear</button>
-            </div>
-            <label><input type="checkbox" value="connector"> Connector</label>
-            <label><input type="checkbox" value="terminal"> Terminal</label>
-            <label><input type="checkbox" value="accessory"> Accessory</label>
-          </div>
-        </div>
-
-        <!-- Pins multi-select -->
-        <div class="field" data-filter="pins">
-          <label>Pin Count</label>
-          <div class="multi-select" data-filter-toggle="pins">
-            <span class="multi-select-label multi-select-placeholder" id="pinsLabel">Any</span>
-            <span class="multi-select-caret">▾</span>
-          </div>
-          <div class="multi-select-menu" data-filter-menu="pins">
-            <div class="multi-select-menu-header">
-              <button type="button" class="multi-select-clear" data-clear="pins">Clear</button>
-            </div>
-            <!-- options added dynamically -->
-          </div>
-        </div>
-
-        <!-- Gender multi-select -->
-        <div class="field" data-filter="gender">
-          <label>Gender</label>
-          <div class="multi-select" data-filter-toggle="gender">
-            <span class="multi-select-label multi-select-placeholder" id="genderLabel">Any</span>
-            <span class="multi-select-caret">▾</span>
-          </div>
-          <div class="multi-select-menu" data-filter-menu="gender">
-            <div class="multi-select-menu-header">
-              <button type="button" class="multi-select-clear" data-clear="gender">Clear</button>
-            </div>
-            <label><input type="checkbox" value="male"> Male</label>
-            <label><input type="checkbox" value="female"> Female</label>
-            <label><input type="checkbox" value="m & f"> M & F</label>
-          </div>
-        </div>
-
-        <!-- Terminal size multi-select -->
-        <div class="field" data-filter="termSize">
-          <label>Terminal Size</label>
-          <div class="multi-select" data-filter-toggle="termSize">
-            <span class="multi-select-label multi-select-placeholder" id="termSizeLabel">Any</span>
-            <span class="multi-select-caret">▾</span>
-          </div>
-          <div class="multi-select-menu" data-filter-menu="termSize">
-            <div class="multi-select-menu-header">
-              <button type="button" class="multi-select-clear" data-clear="termSize">Clear</button>
-            </div>
-            <!-- options added dynamically from termSizeOptions -->
-          </div>
-        </div>
-      </div>
-
-      <!-- Secondary filters -->
-      <div class="search-row secondary">
-        <div class="field">
-          <label for="locationFilter">Location (Shop or Van)</label>
-          <input id="locationFilter" type="text" placeholder="Tub27, Van Bin, etc." />
-        </div>
-
-        <!-- Manufacturer multi-select -->
-        <div class="field" data-filter="manufacturer">
-          <label>Supplier</label>
-          <div class="multi-select" data-filter-toggle="manufacturer">
-            <span class="multi-select-label multi-select-placeholder" id="manufacturerLabel">All</span>
-            <span class="multi-select-caret">▾</span>
-          </div>
-          <div class="multi-select-menu" data-filter-menu="manufacturer">
-            <div class="multi-select-menu-header">
-              <button type="button" class="multi-select-clear" data-clear="manufacturer">Clear</button>
-            </div>
-            <!-- options added dynamically -->
-          </div>
-        </div>
-
-        <!-- OEM/Vehicle multi-select -->
-        <div class="field" data-filter="oem">
-          <label>Vehicle / OEM</label>
-          <div class="multi-select" data-filter-toggle="oem">
-            <span class="multi-select-label multi-select-placeholder" id="oemLabel">Any</span>
-            <span class="multi-select-caret">▾</span>
-          </div>
-          <div class="multi-select-menu" data-filter-menu="oem">
-            <div class="multi-select-menu-header">
-              <button type="button" class="multi-select-clear" data-clear="oem">Clear</button>
-            </div>
-            <label><input type="checkbox" value="Ford"> Ford</label>
-            <label><input type="checkbox" value="GM"> GM</label>
-            <label><input type="checkbox" value="Hyundai/Kia"> Hyundai/Kia</label>
-            <label><input type="checkbox" value="Nissan"> Nissan</label>
-            <label><input type="checkbox" value="Toyota"> Toyota</label>
-          </div>
-        </div>
-      </div>
-
-      <div class="toolbar">
-        <div id="resultsCount">Loading inventory…</div>
-        <div class="toolbar-right">
-          <label class="tiny-check">
-            <input type="checkbox" id="hasPictureFilter" /> Pic only
-          </label>
-          <label class="tiny-check">
-            <input type="checkbox" id="hasTerminalsFilter" /> Term only
-          </label>
-          <select id="stockFilter" class="stock-select">
-            <option value="">All stock</option>
-            <option value="shop">Shop &gt; 0</option>
-            <option value="van">Van &gt; 0</option>
-          </select>
-          <button type="button" id="resetFiltersBtn"><span>↺</span> Reset filters</button>
-        </div>
       </div>
 
       <!-- Action bar -->
@@ -655,10 +820,67 @@
           <label for="actionSelect">Action</label>
           <select id="actionSelect">
             <option value="">Choose…</option>
-            <option value="request">Request this connector</option>
+            <option value="sendInfo">Send info to OnsitePASS Chat</option>
+            <option value="requestConnector">Request this connector</option>
+            <option value="copyPart">Copy part #</option>
+            <option value="updateInventory">Update Inventory</option>
+            <option value="addInventory">Add to Inventory</option>
           </select>
           <button type="button" id="runActionBtn">Go</button>
           <span id="actionStatus" class="action-status"></span>
+        </div>
+        <button type="button" id="closeActionBarBtn" class="action-close">×</button>
+      </div>
+
+      <!-- Request Connector Modal -->
+      <div id="requestModal" class="modal-backdrop">
+        <div class="modal-card">
+          <div class="modal-header">
+            <h2>Request this connector</h2>
+            <button type="button" id="requestModalClose" class="action-close">×</button>
+          </div>
+          <div class="modal-body">
+            <div class="modal-field">
+              <label>Part #</label>
+              <input id="requestPartNumber" type="text" readonly />
+            </div>
+            <div class="modal-field">
+              <label>Description</label>
+              <input id="requestDescription" type="text" readonly />
+            </div>
+            <div class="modal-field">
+              <label>Requestor</label>
+              <input id="requestRequestor" type="text" placeholder="Who is requesting?" />
+            </div>
+            <div class="modal-field">
+              <label>Shop</label>
+              <input id="requestShop" type="text" placeholder="Shop name / location" />
+            </div>
+            <div class="modal-field">
+              <label>VIN or Year / Make / Model</label>
+              <input id="requestVinOrYmm" type="text" placeholder="17-digit VIN or Y/M/M text" />
+              <small id="requestVinHint" class="modal-hint"></small>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" id="requestModalSendBtn" class="primary-btn">Send to Chat</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Inventory Modal (Update + Add) -->
+      <div id="inventoryModal" class="modal-backdrop">
+        <div class="modal-card">
+          <div class="modal-header">
+            <h2 id="inventoryModalTitle">Update Inventory</h2>
+            <button type="button" id="inventoryModalClose" class="action-close">×</button>
+          </div>
+          <div class="modal-body" id="inventoryModalBody">
+            <!-- built dynamically -->
+          </div>
+          <div class="modal-footer">
+            <button type="button" id="inventoryModalSaveBtn" class="primary-btn">Save</button>
+          </div>
         </div>
       </div>
 
@@ -698,13 +920,12 @@
   </div>
 
   <script>
-    const DATA_URL = "/.netlify/functions/get-connectors";  // ✅ use Netlify function
+    const DATA_URL = "/.netlify/functions/get-connectors";
     const REQUEST_URL =
-    "https://script.google.com/macros/s/AKfycbzQISzKogNh6a9h3x4Ei6nVK2hYRQkUJNpra0YTY4KcrPDeamps-4rAm67NhMId_DAj/exec"; // your Chat request script
-    const STORAGE_KEY = "connectorInventoryFiltersV1";  
+      "https://script.google.com/macros/s/AKfycbzQISzKogNh6a9h3x4Ei6nVK2hYRQkUJNpra0YTY4KcrPDeamps-4rAm67NhMId_DAj/exec";
+    const STORAGE_KEY = "connectorInventoryFiltersV1";
 
-
-    const PAGE_SIZE = 100; // ✅ 100 items per page now
+    const PAGE_SIZE = 100;
     let connectorData = [];
     let filteredData = [];
     let currentPage = 1;
@@ -729,6 +950,7 @@
     const actionSelect = document.getElementById("actionSelect");
     const runActionBtn = document.getElementById("runActionBtn");
     const actionStatus = document.getElementById("actionStatus");
+    const closeActionBarBtn = document.getElementById("closeActionBarBtn");
 
     const categoryLabel = document.getElementById("categoryLabel");
     const pinsLabel = document.getElementById("pinsLabel");
@@ -741,6 +963,24 @@
     const nextPageBtn = document.getElementById("nextPageBtn");
     const pageInfo = document.getElementById("pageInfo");
 
+    // Request modal elements
+    const requestModal = document.getElementById("requestModal");
+    const requestModalClose = document.getElementById("requestModalClose");
+    const requestPartNumberInput = document.getElementById("requestPartNumber");
+    const requestDescriptionInput = document.getElementById("requestDescription");
+    const requestRequestorInput = document.getElementById("requestRequestor");
+    const requestShopInput = document.getElementById("requestShop");
+    const requestVinOrYmmInput = document.getElementById("requestVinOrYmm");
+    const requestVinHint = document.getElementById("requestVinHint");
+    const requestModalSendBtn = document.getElementById("requestModalSendBtn");
+
+    // Inventory modal elements
+    const inventoryModal = document.getElementById("inventoryModal");
+    const inventoryModalTitle = document.getElementById("inventoryModalTitle");
+    const inventoryModalClose = document.getElementById("inventoryModalClose");
+    const inventoryModalBody = document.getElementById("inventoryModalBody");
+    const inventoryModalSaveBtn = document.getElementById("inventoryModalSaveBtn");
+
     const multiState = {
       category: new Set(),
       pins: new Set(),
@@ -748,26 +988,6 @@
       termSize: new Set(),
       manufacturer: new Set(),
       oem: new Set()
-    };
-
-    const DETAIL_LABELS = {
-      termTub1: "Term Tub",
-      termBin1: "Term Bin",
-      terminal1: "Terminal",
-      crimper1: "Crimper 1",
-      crimper2: "Crimper 2",
-      terminal2: "Terminal 2",
-      termBin2: "Term Bin 2",
-      termTub2: "Term Tub 2",
-      terminalManufacturer: "Terminal Mfr",
-      plug1: "Plug 1",
-      plug2: "Plug 2",
-      cover: "Cover",
-      passNumber: "PASS #",
-      price: "Price",
-      duplicateCheck: "Duplicate Check",
-      history: "History",
-      terminalSizes: "Terminal Sizes"
     };
 
     function qtyClass(qty) {
@@ -778,17 +998,6 @@
 
     function normalize(str) {
       return String(str || "").toLowerCase().replace(/\s+/g, " ").trim();
-    }
-
-    function normalizeTerminalLocation(raw) {
-      if (!raw) return "";
-      let cleaned = String(raw)
-        .replace(/terminals?/gi, "")
-        .replace(/#/g, "")
-        .trim();
-      if (!cleaned) return "";
-      cleaned = cleaned.replace(/\s*-\s*/g, "-");
-      return "T:" + cleaned;
     }
 
     function updateMultiLabel(filterName) {
@@ -979,78 +1188,94 @@
     }
 
     function createDetailsGrid(details) {
-  const grid = document.createElement("div");
-  grid.className = "details-grid";
+      const grid = document.createElement("div");
+      grid.className = "details-grid";
 
-  const makeBlock = (title, main, sub) => {
-    if (!main && !sub) return null;
-    const block = document.createElement("div");
-    block.className = "details-term-block";
+      const makeBlock = (title, main, sub) => {
+        if (!main && !sub) return null;
+        const block = document.createElement("div");
+        block.className = "details-term-block";
 
-    const titleEl = document.createElement("div");
-    titleEl.className = "details-term-title";
-    titleEl.textContent = title;
+        const titleEl = document.createElement("div");
+        titleEl.className = "details-term-title";
+        titleEl.textContent = title;
 
-    const mainEl = document.createElement("div");
-    mainEl.className = "details-term-main";
-    mainEl.textContent = main || "";
+        const mainEl = document.createElement("div");
+        mainEl.className = "details-term-main";
+        mainEl.textContent = main || "";
 
-    const subEl = document.createElement("div");
-    subEl.className = "details-term-sub";
-    subEl.textContent = sub || "";
+        const subEl = document.createElement("div");
+        subEl.className = "details-term-sub";
+        subEl.textContent = sub || "";
 
-    block.appendChild(titleEl);
-    if (main) block.appendChild(mainEl);
-    if (sub) block.appendChild(subEl);
+        block.appendChild(titleEl);
+        if (main) block.appendChild(mainEl);
+        if (sub) block.appendChild(subEl);
 
-    return block;
-  };
+        return block;
+      };
 
-  // Terminal 1 – code from Y, locations from W (left) + X (right)
-  const t1Sub = [details.terminal1Tub, details.terminal1Range]
-    .filter(Boolean)
-    .join("  ·  ");
-  const t1 = makeBlock("TERMINAL 1", details.terminal1Code, t1Sub);
+      const t1Sub = [details.terminal1Tub, details.terminal1Range]
+        .filter(Boolean)
+        .join("  ·  ");
+      const t1 = makeBlock("TERMINAL 1", details.terminal1Code, t1Sub);
 
-  // Terminal 2 – code from AB, locations from AD (left) + AC (right)
-  const t2Sub = [details.terminal2Tub, details.terminal2Range]
-    .filter(Boolean)
-    .join("  ·  ");
-  const t2 = makeBlock("TERMINAL 2", details.terminal2Code, t2Sub);
+      const t2Sub = [details.terminal2Tub, details.terminal2Range]
+        .filter(Boolean)
+        .join("  ·  ");
+      const t2 = makeBlock("TERMINAL 2", details.terminal2Code, t2Sub);
 
-  const mating = makeBlock("MATING", details.mating || "", "");
+      const mating = makeBlock("MATING", details.mating || "", "");
 
-  // Price
-  let priceText = "";
-  if (typeof details.price === "number") {
-    priceText = `$${details.price.toFixed(2)}`;
-  } else if (details.price) {
-    priceText = String(details.price);
-  }
-  const price = makeBlock("PRICE", priceText, "");
+      let priceText = "";
+      if (typeof details.price === "number") {
+        priceText = `$${details.price.toFixed(2)}`;
+      } else if (details.price) {
+        priceText = String(details.price);
+      }
+      const price = makeBlock("PRICE", priceText, "");
 
-  // Alt Number(s) from column P
-  const alt = makeBlock("ALT NUMBER", details.altNumber || "", "");
+      const alt = makeBlock("ALT NUMBER", details.altNumber || "", "");
 
-  [t1, t2, mating, price, alt].forEach((b) => b && grid.appendChild(b));
+      [t1, t2, mating, price, alt].forEach((b) => b && grid.appendChild(b));
 
-  // OEM blocks
-  const ford = makeBlock("FORD", details.ford || "", "");
-  const gm = makeBlock("GM", details.gm || "", "");
-  const hk = makeBlock("HYUNDAI/KIA", details.hyundaiKia || "", "");
-  const nissan = makeBlock("NISSAN", details.nissan || "", "");
-  const toyota = makeBlock("TOYOTA", details.toyota || "", "");
-  [ford, gm, hk, nissan, toyota].forEach((b) => b && grid.appendChild(b));
+      const ford = makeBlock("FORD", details.ford || "", "");
+      const gm = makeBlock("GM", details.gm || "", "");
+      const hk = makeBlock("HYUNDAI/KIA", details.hyundaiKia || "", "");
+      const nissan = makeBlock("NISSAN", details.nissan || "", "");
+      const toyota = makeBlock("TOYOTA", details.toyota || "", "");
+      [ford, gm, hk, nissan, toyota].forEach((b) => b && grid.appendChild(b));
 
-  if (!grid.children.length) {
-    const empty = document.createElement("div");
-    empty.className = "details-item-value";
-    empty.textContent = "No extra details.";
-    grid.appendChild(empty);
-  }
+      if (!grid.children.length) {
+        const empty = document.createElement("div");
+        empty.className = "details-item-sub";
+        empty.textContent = "No extra details.";
+        grid.appendChild(empty);
+      }
 
-  return grid;
-}
+      return grid;
+    }
+
+    function clearSelection() {
+      selectedItem = null;
+      selectedPartSpan.textContent = "(none)";
+      actionSelect.value = "";
+      actionStatus.textContent = "";
+      actionBar.style.display = "none";
+
+      document.querySelectorAll(".data-row.selected-row").forEach(r => {
+        r.classList.remove("selected-row");
+      });
+
+      if (openDetailsRow) {
+        openDetailsRow.style.display = "none";
+        openDetailsRow = null;
+      }
+      if (openExpander) {
+        openExpander.textContent = "▸";
+        openExpander = null;
+      }
+    }
 
     function selectItem(item, rowEl) {
       selectedItem = item;
@@ -1084,7 +1309,6 @@
         const tr = document.createElement("tr");
         tr.className = "data-row";
 
-        // Expander
         const tdExp = document.createElement("td");
         const exp = document.createElement("span");
         exp.className = "expander";
@@ -1092,34 +1316,45 @@
         tdExp.appendChild(exp);
         tr.appendChild(tdExp);
 
-        // Pic
         const tdPic = document.createElement("td");
+
         if (item.picture && /^https?:\/\//.test(item.picture)) {
           const img = document.createElement("img");
-          img.src = item.picture;
+
+          const proxiedUrl = `/.netlify/functions/image-proxy?url=${encodeURIComponent(
+            item.picture
+          )}`;
+
+          img.src = proxiedUrl;
           img.alt = item.partNumber || "Connector";
           img.className = "thumb-img";
-          img.addEventListener("click", e => {
+
+          img.addEventListener("click", (e) => {
             e.stopPropagation();
             window.open(item.picture, "_blank");
           });
+
+          img.onerror = () => {
+            img.src = "";
+            img.alt = "No image";
+            tdPic.innerHTML = '<span class="muted">—</span>';
+          };
+
           tdPic.appendChild(img);
         } else {
           tdPic.innerHTML = '<span class="muted">—</span>';
         }
+
         tr.appendChild(tdPic);
 
-        // Part #
         const tdPart = document.createElement("td");
         tdPart.textContent = item.partNumber || "";
         tr.appendChild(tdPart);
 
-        // Description (Col O)
         const tdDesc = document.createElement("td");
         tdDesc.textContent = item.description || "";
         tr.appendChild(tdDesc);
 
-        // Shop
         const tdShop = document.createElement("td");
         tdShop.textContent = item.shop || "";
         tdShop.className = "shop-cell";
@@ -1133,7 +1368,6 @@
         tdShopQty.className = "shop-qty";
         tr.appendChild(tdShopQty);
 
-        // Van
         const tdVan = document.createElement("td");
         tdVan.textContent = item.van || "";
         tdVan.className = "van-cell";
@@ -1148,12 +1382,10 @@
         tdVanQty.className = "van-qty";
         tr.appendChild(tdVanQty);
 
-        // Pins
         const tdPins = document.createElement("td");
         tdPins.textContent = item.pins || "";
         tr.appendChild(tdPins);
 
-        // Type
         const tdType = document.createElement("td");
         const tag = document.createElement("span");
         tag.className = "tag";
@@ -1161,18 +1393,15 @@
         tdType.appendChild(tag);
         tr.appendChild(tdType);
 
-        // Gender
         const tdGender = document.createElement("td");
         const g = String(item.gender || "").toLowerCase();
         tdGender.textContent = g === "female" ? "F" : g === "male" ? "M" : "";
         tr.appendChild(tdGender);
 
-        // Supplier
         const tdMfr = document.createElement("td");
         tdMfr.textContent = item.manufacturer || "";
         tr.appendChild(tdMfr);
 
-        // Details row
         const detailsTr = document.createElement("tr");
         detailsTr.className = "details-row";
         detailsTr.style.display = "none";
@@ -1247,6 +1476,11 @@
       nextPageBtn.disabled = currentPage >= totalPages;
     }
 
+    function closeAllMultiMenus() {
+      document.querySelectorAll(".multi-select").forEach(el => el.classList.remove("open"));
+      document.querySelectorAll(".multi-select-menu").forEach(el => el.classList.remove("open"));
+    }
+
     function wireMultiDropdowns() {
       const toggles = document.querySelectorAll(".multi-select");
       toggles.forEach(toggle => {
@@ -1279,11 +1513,6 @@
           closeAllMultiMenus();
         }
       });
-    }
-
-    function closeAllMultiMenus() {
-      document.querySelectorAll(".multi-select").forEach(el => el.classList.remove("open"));
-      document.querySelectorAll(".multi-select-menu").forEach(el => el.classList.remove("open"));
     }
 
     function wireMultiCheckboxes() {
@@ -1398,7 +1627,6 @@
 
         connectorData = data.items;
 
-        // Pins
         if (Array.isArray(data.pinOptions)) {
           const pinsMenu =
             document.querySelector('.multi-select-menu[data-filter-menu="pins"]');
@@ -1424,7 +1652,6 @@
           }
         }
 
-        // Supplier
         if (Array.isArray(data.manufacturerOptions)) {
           const mMenu =
             document.querySelector('.multi-select-menu[data-filter-menu="manufacturer"]');
@@ -1448,7 +1675,6 @@
           }
         }
 
-        // Terminal Size options from Stats!S5:S150 (termSizeOptions)
         if (Array.isArray(data.termSizeOptions)) {
           const tMenu =
             document.querySelector('.multi-select-menu[data-filter-menu="termSize"]');
@@ -1487,49 +1713,250 @@
       }
     }
 
-    // Request connector via hidden iframe (Chat webhook via Apps Script)
-    runActionBtn.addEventListener("click", () => {
-      if (!selectedItem) {
-        actionStatus.textContent = "Select a connector first.";
-        return;
+    /* ---------- VIN helpers ---------- */
+
+    function isPotentialVin(str) {
+      if (!str) return false;
+      const trimmed = String(str).replace(/\s+/g, "").toUpperCase();
+      return (
+        trimmed.length === 17 &&
+        !/[IOQ]/.test(trimmed) &&
+        /^[A-Z0-9]+$/.test(trimmed)
+      );
+    }
+
+    async function decodeVinIfNeeded(raw) {
+      const trimmed = String(raw || "").replace(/\s+/g, "").toUpperCase();
+      if (!isPotentialVin(trimmed)) {
+        requestVinHint.textContent = "";
+        return { vin: "", year: "", make: "", model: "", raw: raw || "" };
       }
-      const action = actionSelect.value;
-      if (!action) {
-        actionStatus.textContent = "Choose an action.";
-        return;
+
+      requestVinHint.textContent = "Detected 17-digit VIN.";
+      // You can later add a fetch to NHTSA here for real decode.
+      return { vin: trimmed, year: "", make: "", model: "", raw: raw || "" };
+    }
+
+    /* ---------- Chat senders ---------- */
+
+    // Basic connector info → OnsitePASS Chat
+    function sendRequestToChat(item) {
+      actionStatus.textContent = "Sending request…";
+
+      const params = new URLSearchParams({
+        mode: "requestConnector",
+        partNumber: item.partNumber || "",
+        description: item.description || "",
+        shop: item.shop || "",
+        shopQty: String(item.shopQty ?? ""),
+        van: item.van || "",
+        vanQty: String(item.vanQty ?? ""),
+        pins: String(item.pins ?? ""),
+        category: item.category || "",
+        manufacturer: item.manufacturer || "",
+        passNumber: item.passNumber || "",
+        source: "Connector Inventory Web"
+      });
+
+      params.append("ts", Date.now().toString());
+
+      const url = REQUEST_URL + "?" + params.toString();
+
+      let iframe = document.getElementById("requestFrame");
+      if (!iframe) {
+        iframe = document.createElement("iframe");
+        iframe.id = "requestFrame";
+        iframe.style.display = "none";
+        document.body.appendChild(iframe);
       }
 
-      if (action === "request") {
-        const params = new URLSearchParams({
-          mode: "requestConnector",
-          partNumber: selectedItem.partNumber || "",
-          description: selectedItem.description || "",
-          shop: selectedItem.shop || "",
-          shopQty: String(selectedItem.shopQty ?? ""),
-          van: selectedItem.van || "",
-          vanQty: String(selectedItem.vanQty ?? ""),
-          pins: String(selectedItem.pins ?? ""),
-          category: selectedItem.category || "",
-          manufacturer: selectedItem.manufacturer || "",
-          passNumber: selectedItem.passNumber || "",
-          source: "Connector Inventory Web"
-        });
+      iframe.src = url;
+      actionStatus.textContent = "Request sent to Google Chat.";
+    }
 
-        params.append("ts", Date.now().toString());
-        const url = DATA_URL + "?" + params.toString();
+    // Detailed request (Requestor / Shop / VIN/YMM)
+    async function sendDetailedRequestToChat(item) {
+      const vinInfo = await decodeVinIfNeeded(requestVinOrYmmInput.value);
 
-        let iframe = document.getElementById("requestFrame");
-        if (!iframe) {
-          iframe = document.createElement("iframe");
-          iframe.id = "requestFrame";
-          iframe.style.display = "none";
-          document.body.appendChild(iframe);
-        }
+      const params = new URLSearchParams({
+        mode: "requestConnectorDetailed",
+        partNumber: item.partNumber || "",
+        description: item.description || "",
+        requestor: requestRequestorInput.value || "",
+        shop: requestShopInput.value || "",
+        vinOrYmm: requestVinOrYmmInput.value || "",
+        vin: vinInfo.vin || "",
+        year: vinInfo.year || "",
+        make: vinInfo.make || "",
+        model: vinInfo.model || "",
+        source: "Connector Inventory Web"
+      });
 
-        iframe.src = url;
-        actionStatus.textContent = "Request sent to Google Chat.";
+      params.append("ts", Date.now().toString());
+
+      const url = REQUEST_URL + "?" + params.toString();
+
+      let iframe = document.getElementById("requestFrame");
+      if (!iframe) {
+        iframe = document.createElement("iframe");
+        iframe.id = "requestFrame";
+        iframe.style.display = "none";
+        document.body.appendChild(iframe);
       }
+
+      iframe.src = url;
+      actionStatus.textContent = "Request sent to Google Chat.";
+    }
+
+    /* ---------- Modals ---------- */
+
+    function openRequestModal() {
+      if (!selectedItem) return;
+      requestPartNumberInput.value = selectedItem.partNumber || "";
+      requestDescriptionInput.value = selectedItem.description || "";
+      requestRequestorInput.value = "";
+      requestShopInput.value = "";
+      requestVinOrYmmInput.value = "";
+      requestVinHint.textContent = "";
+      requestModal.classList.add("open");
+    }
+
+    function closeRequestModal() {
+      requestModal.classList.remove("open");
+    }
+
+    requestModalClose.addEventListener("click", closeRequestModal);
+    requestModalSendBtn.addEventListener("click", () => {
+      if (!selectedItem) return;
+      sendDetailedRequestToChat(selectedItem);
+      closeRequestModal();
     });
+
+    function buildInventoryForm(item, mode) {
+      inventoryModalBody.innerHTML = "";
+
+      const data = item || {};
+
+      const fields = [
+        { key: "shopQty", label: "Shop Qty", value: data.shopQty ?? "", type: "number" },
+        { key: "vanQty", label: "Van Qty", value: data.vanQty ?? "", type: "number" },
+        { key: "shop", label: "Shop Location", value: data.shop || "", type: "text" },
+        { key: "van", label: "Van Location", value: data.van || "", type: "text" },
+        { key: "partNumber", label: "Part #", value: data.partNumber || "", type: "text" },
+        { key: "description", label: "Description", value: data.description || "", type: "text" },
+        { key: "altNumber", label: "Alt Number", value: data.altNumber || "", type: "text" },
+        { key: "pins", label: "Pin Count", value: data.pins || "", type: "text" },
+        { key: "category", label: "Type", value: data.category || "", type: "text" },
+        { key: "gender", label: "Gender", value: data.gender || "", type: "text" },
+        { key: "manufacturer", label: "Supplier", value: data.manufacturer || "", type: "text" },
+        { key: "terminalSizes", label: "Terminal Sizes", value: data.terminalSizes || "", type: "text" }
+      ];
+
+      fields.forEach(f => {
+        const wrapper = document.createElement("div");
+        wrapper.className = "modal-field";
+
+        const label = document.createElement("label");
+        label.textContent = f.label;
+
+        const current = document.createElement("div");
+        current.style.fontSize = "0.72rem";
+        current.style.color = "#6b7280";
+        current.textContent =
+          mode === "update" && data && data[f.key] !== undefined
+            ? `Current: ${data[f.key]}`
+            : (mode === "update" ? "Current: (blank)" : "");
+
+        const input = document.createElement("input");
+        input.type = f.type || "text";
+        input.id = `inv_${f.key}`;
+        input.value = mode === "update" ? "" : (f.value ?? "");
+
+        wrapper.appendChild(label);
+        if (mode === "update") wrapper.appendChild(current);
+        wrapper.appendChild(input);
+
+        inventoryModalBody.appendChild(wrapper);
+      });
+    }
+
+    function openInventoryModal(mode) {
+      if (mode === "update" && !selectedItem) return;
+
+      const title = mode === "update" ? "Update Inventory" : "Add to Inventory";
+      inventoryModalTitle.textContent = title;
+
+      const itemForForm = mode === "update" ? selectedItem : {};
+      buildInventoryForm(itemForForm, mode);
+
+      inventoryModalSaveBtn.dataset.mode = mode;
+      inventoryModal.classList.add("open");
+    }
+
+    function closeInventoryModal() {
+      inventoryModal.classList.remove("open");
+    }
+
+    inventoryModalClose.addEventListener("click", closeInventoryModal);
+
+    inventoryModalSaveBtn.addEventListener("click", () => {
+      const mode = inventoryModalSaveBtn.dataset.mode || "update";
+
+      const payload = {};
+      const keys = [
+        "shopQty",
+        "vanQty",
+        "shop",
+        "van",
+        "partNumber",
+        "description",
+        "altNumber",
+        "pins",
+        "category",
+        "gender",
+        "manufacturer",
+        "terminalSizes"
+      ];
+
+      keys.forEach(k => {
+        const input = document.getElementById(`inv_${k}`);
+        if (!input) return;
+        const val = input.value;
+        if (val !== "") {
+          payload[k] = val;
+        }
+      });
+
+      if (mode === "update" && selectedItem) {
+        payload.originalPartNumber = selectedItem.partNumber || "";
+      }
+
+      const params = new URLSearchParams();
+      params.append("mode", mode === "update" ? "updateInventory" : "addInventory");
+      params.append("source", "Connector Inventory Web");
+      params.append("data", JSON.stringify(payload));
+      params.append("ts", Date.now().toString());
+
+      const url = REQUEST_URL + "?" + params.toString();
+
+      let iframe = document.getElementById("requestFrame");
+      if (!iframe) {
+        iframe = document.createElement("iframe");
+        iframe.id = "requestFrame";
+        iframe.style.display = "none";
+        document.body.appendChild(iframe);
+      }
+
+      iframe.src = url;
+      actionStatus.textContent =
+        mode === "update" ? "Inventory update sent." : "Add-to-inventory sent.";
+
+      closeInventoryModal();
+    });
+
+    /* ---------- Actions / events ---------- */
+
+    closeActionBarBtn.addEventListener("click", clearSelection);
 
     const debouncedApply = debounce(applyFilters, 250);
     searchInput.addEventListener("input", debouncedApply);
@@ -1552,6 +1979,7 @@
       stockFilter.value = "";
       clearAllMultiSelects();
       applyFilters();
+      clearSelection();
     });
 
     document.querySelectorAll("th.sortable").forEach(th => {
@@ -1579,6 +2007,68 @@
       if (currentPage < totalPages) {
         currentPage++;
         renderPagedResults();
+      }
+    });
+
+    runActionBtn.addEventListener("click", () => {
+      if (!selectedItem) {
+        actionStatus.textContent = "Select a connector first.";
+        return;
+      }
+
+      const action = actionSelect.value;
+      if (!action) {
+        actionStatus.textContent = "Choose an action.";
+        return;
+      }
+
+      if (action === "sendInfo") {
+        sendRequestToChat(selectedItem);
+      } else if (action === "requestConnector") {
+        openRequestModal();
+      } else if (action === "copyPart") {
+        const part = selectedItem.partNumber || "";
+        if (!part) {
+          actionStatus.textContent = "No part # to copy.";
+          return;
+        }
+
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard
+            .writeText(part)
+            .then(() => {
+              actionStatus.textContent = `Part # ${part} copied.`;
+            })
+            .catch(() => {
+              const temp = document.createElement("input");
+              temp.value = part;
+              document.body.appendChild(temp);
+              temp.select();
+              try {
+                document.execCommand("copy");
+                actionStatus.textContent = `Part # ${part} copied.`;
+              } catch (e) {
+                actionStatus.textContent = "Unable to copy part #.";
+              }
+              document.body.removeChild(temp);
+            });
+        } else {
+          const temp = document.createElement("input");
+          temp.value = part;
+          document.body.appendChild(temp);
+          temp.select();
+          try {
+            document.execCommand("copy");
+            actionStatus.textContent = `Part # ${part} copied.`;
+          } catch (e) {
+            actionStatus.textContent = "Unable to copy part #.";
+          }
+          document.body.removeChild(temp);
+        }
+      } else if (action === "updateInventory") {
+        openInventoryModal("update");
+      } else if (action === "addInventory") {
+        openInventoryModal("add");
       }
     });
 
