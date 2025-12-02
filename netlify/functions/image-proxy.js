@@ -1,52 +1,57 @@
 // netlify/functions/image-proxy.js
-//
-// Proxy a *thumbnail* from Google Drive so the Netlify
-// function response stays under the 6 MB limit.
 
-exports.handler = async (event) => {
+// Simple generic image proxy. It just takes ?url=... and streams it back.
+// This runs on the server, so ORB / CORS rules in the browser don't apply.
+
+exports.handler = async function (event) {
   try {
-    const id = event.queryStringParameters && event.queryStringParameters.id;
-    if (!id) {
-      return { statusCode: 400, body: "Missing id parameter" };
-    }
-
-    // Use Drive's thumbnail endpoint instead of full download.
-    // sz=w600 gives a nice medium-sized image; you can make it
-    // smaller (w400, w300) if you want to be extra safe.
-    const driveThumbUrl =
-      "https://drive.google.com/thumbnail?id=" +
-      encodeURIComponent(id) +
-      "&sz=w600";
-
-    const resp = await fetch(driveThumbUrl);
-
-    if (!resp.ok) {
-      console.error("Drive thumbnail fetch failed:", resp.status, await resp.text());
+    const url = event.queryStringParameters && event.queryStringParameters.url;
+    if (!url) {
       return {
-        statusCode: 502,
-        body: "Failed to fetch image from Drive",
+        statusCode: 400,
+        body: "Missing 'url' query parameter",
       };
     }
 
-    const contentType = resp.headers.get("content-type") || "image/jpeg";
-    const arrayBuf = await resp.arrayBuffer();
-    const buffer = Buffer.from(arrayBuf);
+    // Basic safety: only allow http/https
+    if (!/^https?:\/\//i.test(url)) {
+      return {
+        statusCode: 400,
+        body: "Invalid URL",
+      };
+    }
+
+    // Use built-in fetch (Node 18+)
+    const upstream = await fetch(url);
+
+    if (!upstream.ok) {
+      console.error("Upstream image error:", upstream.status, upstream.statusText);
+      return {
+        statusCode: upstream.status,
+        body: `Upstream error: ${upstream.status} ${upstream.statusText}`,
+      };
+    }
+
+    const contentType =
+      upstream.headers.get("content-type") || "image/jpeg";
+
+    const arrayBuffer = await upstream.arrayBuffer();
+    const base64 = Buffer.from(arrayBuffer).toString("base64");
 
     return {
       statusCode: 200,
       headers: {
         "Content-Type": contentType,
-        // Cache on browser / CDN so we don't keep re-fetching the same image
         "Cache-Control": "public, max-age=86400",
       },
-      body: buffer.toString("base64"),
+      body: base64,
       isBase64Encoded: true,
     };
   } catch (err) {
     console.error("image-proxy error:", err);
     return {
       statusCode: 500,
-      body: "Internal Server Error",
+      body: "Image proxy error",
     };
   }
 };
