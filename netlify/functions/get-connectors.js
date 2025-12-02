@@ -8,6 +8,39 @@ function formatTermRange(raw) {
   return match ? `T:${match[1].replace(/\s+/g, "")}` : String(raw);
 }
 
+// Turn any Google Drive URL into a thumbnail URL
+function toDriveThumbnail(url) {
+  if (!url) return "";
+  let str = String(url).trim();
+
+  // Strip surrounding quotes if present
+  str = str.replace(/^['"]+|['"]+$/g, "");
+
+  // If it's not a Drive URL, just return as-is
+  if (!str.includes("drive.google.com")) return str;
+
+  let id = null;
+
+  // Pattern: ...?id=FILE_ID...
+  const idParam = str.match(/[?&]id=([^&]+)/);
+  if (idParam) {
+    id = idParam[1];
+  }
+
+  // Pattern: .../file/d/FILE_ID/...
+  if (!id) {
+    const fileMatch = str.match(/\/file\/d\/([^/]+)/);
+    if (fileMatch) {
+      id = fileMatch[1];
+    }
+  }
+
+  if (!id) return str;
+
+  // Thumbnail endpoint – Chrome is happier with this for <img> tags
+  return `https://drive.google.com/thumbnail?id=${id}&sz=w400`;
+}
+
 exports.handler = async function (event) {
   try {
     if (event.httpMethod !== "GET") {
@@ -16,10 +49,8 @@ exports.handler = async function (event) {
 
     const creds = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON);
     const spreadsheetId = process.env.SHEETS_SPREADSHEET_ID;
-
-    // We only need through AQ (picture URL)
     const mainRange =
-      process.env.SHEETS_RANGE || "'Connector Inventory'!A2:AQ";
+      process.env.SHEETS_RANGE || "'Connector Inventory'!A2:AZ";
 
     const auth = new google.auth.GoogleAuth({
       credentials: creds,
@@ -28,34 +59,35 @@ exports.handler = async function (event) {
 
     const sheets = google.sheets({ version: "v4", auth });
 
+    // Pull main data + stats ranges
     const response = await sheets.spreadsheets.values.batchGet({
       spreadsheetId,
       ranges: [
-        mainRange,
-        "Stats!A2:A",     // Pin counts
-        "Stats!E2:E",     // Supplier list
-        "Stats!S5:S150",  // Terminal Size options
+        mainRange,      // 0: main inventory
+        "Stats!A2:A",   // 1: pin counts
+        "Stats!E2:E",   // 2: suppliers
+        "Stats!S5:S150" // 3: terminal sizes for dropdown
       ],
     });
 
     const rows = response.data.valueRanges[0].values || [];
     const pinStatsRows = response.data.valueRanges[1].values || [];
     const supplierStatsRows = response.data.valueRanges[2].values || [];
-    const termSizeRows = response.data.valueRanges[3].values || [];
+    const termSizeStatsRows = response.data.valueRanges[3].values || [];
 
-    // 0-based column mapping
+    // Column index mapping (0-based)
     const COL = {
       partNumber: 1,     // B
       shop: 7,           // H
       shopQty: 8,        // I
       van: 9,            // J
       vanQty: 10,        // K
-      gender: 11,        // L
+      gender: 11,        // L  ("M/F" on site)
       pins: 12,          // M
-      category: 13,      // N
+      category: 13,      // N  (Type)
       desc1: 14,         // O  (Description)
-      desc2: 15,         // P  (Alt Number)
-      manufacturer: 16,  // Q
+      altNumber: 15,     // P  (Alt Number)
+      manufacturer: 16,  // Q  (Supplier)
 
       ford: 17,          // R
       gm: 18,            // S
@@ -85,17 +117,16 @@ exports.handler = async function (event) {
       const get = (i) => (row[i] !== undefined ? row[i] : "");
 
       const partNumber = get(COL.partNumber);
-      const desc1 = get(COL.desc1);   // Description
-      const desc2 = get(COL.desc2);   // Alt Number(s)
+      const desc1 = get(COL.desc1);        // Description (Col O)
+      const altNumber = get(COL.altNumber); // Alt Number (Col P)
 
+      // Description column (web) → only Column O
       const description = desc1 || "";
-      const altNumber = desc2 || "";
 
-      // Skip totally blank spacer rows
+      // Skip totally empty / spacer rows
       const hasData =
         partNumber ||
         description ||
-        altNumber ||
         get(COL.shop) ||
         get(COL.van) ||
         get(COL.pins) ||
@@ -103,7 +134,6 @@ exports.handler = async function (event) {
 
       if (!hasData) continue;
 
-      // OEM flags → array
       const oems = [];
       if (get(COL.ford)) oems.push("Ford");
       if (get(COL.gm)) oems.push("GM");
@@ -111,16 +141,14 @@ exports.handler = async function (event) {
       if (get(COL.nissan)) oems.push("Nissan");
       if (get(COL.toyota)) oems.push("Toyota");
 
-      // Picture URL – leave as-is (you already store a working uc?export=view&id=... URL)
-      const pictureRaw = get(COL.picture);
-      const pictureUrl = pictureRaw ? String(pictureRaw).trim() : "";
+      const rawPic = get(COL.picture);
+      const pictureUrl = toDriveThumbnail(rawPic);
 
       items.push({
-        // Top-level fields used by the frontend
         picture: pictureUrl,
         partNumber,
-        description,  // from column O only
-        altNumber,    // from column P
+        description,      // only Column O
+        altNumber,        // Column P, for "Alt Number" in submenu
 
         shop: get(COL.shop),
         shopQty: Number(get(COL.shopQty)) || 0,
@@ -136,23 +164,22 @@ exports.handler = async function (event) {
         vehicle: oems.join(", "),
         terminalSizes: get(COL.terminalSizes),
 
-        // Submenu / details block
         details: {
+          // Alt Number in submenu
+          altNumber,
+
           // Terminal 1
-          terminal1Code: get(COL.term1_code),                     // Y
-          terminal1Tub: get(COL.term1_tub),                       // W
-          terminal1Range: formatTermRange(get(COL.term1_bin)),    // X
+          terminal1Code: get(COL.term1_code),
+          terminal1Range: formatTermRange(get(COL.term1_bin)),
+          terminal1Tub: get(COL.term1_tub),
 
           // Terminal 2
-          terminal2Code: get(COL.term2_code),                     // AB
-          terminal2Tub: get(COL.term2_tub),                       // AD
-          terminal2Range: formatTermRange(get(COL.term2_bin)),    // AC
+          terminal2Code: get(COL.term2_code),
+          terminal2Range: formatTermRange(get(COL.term2_bin)),
+          terminal2Tub: get(COL.term2_tub),
 
           mating: get(COL.mating),
           price: get(COL.price),
-
-          // Alt Number for submenu
-          altNumber,
 
           ford: get(COL.ford),
           gm: get(COL.gm),
@@ -163,25 +190,36 @@ exports.handler = async function (event) {
       });
     }
 
-    // Helper: dedupe, drop blanks
-    const dedupe = (arr) =>
-      arr.filter((v, i) => v && arr.indexOf(v) === i);
+    // Pin count options (Stats!A2:A)
+    const pinOptions = pinStatsRows
+      .map((r) => r[0])
+      .filter(Boolean)
+      .filter((v, i, arr) => arr.indexOf(v) === i)
+      .sort((a, b) => {
+        const na = Number(a);
+        const nb = Number(b);
+        if (!isNaN(na) && !isNaN(nb)) return na - nb;
+        return String(a).localeCompare(String(b));
+      });
 
-    // Pin Count options
-    const pinOptions = dedupe(pinStatsRows.map((r) => r[0])).sort((a, b) => {
-      const na = Number(a);
-      const nb = Number(b);
-      if (!isNaN(na) && !isNaN(nb)) return na - nb;
-      return String(a).localeCompare(String(b));
-    });
+    // Supplier dropdown options (Stats!E2:E)
+    const manufacturerOptions = supplierStatsRows
+      .map((r) => r[0])
+      .filter(Boolean)
+      .filter((v, i, arr) => arr.indexOf(v) === i)
+      .sort((a, b) => String(a).localeCompare(String(b)));
 
-    // Supplier options
-    const manufacturerOptions = dedupe(
-      supplierStatsRows.map((r) => r[0])
-    ).sort((a, b) => String(a).localeCompare(String(b)));
-
-    // Terminal Size options (Stats!S5:S150)
-    const termSizeOptions = dedupe(termSizeRows.map((r) => r[0]));
+    // Terminal size dropdown options (Stats!S5:S150)
+    const termSizeOptions = termSizeStatsRows
+      .map((r) => r[0])
+      .filter(Boolean)
+      .filter((v, i, arr) => arr.indexOf(v) === i)
+      .sort((a, b) => {
+        const na = Number(a);
+        const nb = Number(b);
+        if (!isNaN(na) && !isNaN(nb)) return na - nb;
+        return String(a).localeCompare(String(b));
+      });
 
     return {
       statusCode: 200,
