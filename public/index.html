@@ -23,7 +23,7 @@
 
     /* wider page so table has more room */
     .page {
-      max-width: 1400px;
+      max-width: 1375px;       /* was 1100px */
       margin: 24px auto;
       padding: 0 16px;
       flex: 1;
@@ -700,7 +700,13 @@
   <script>
     const WEB_APP_URL =
       "https://script.google.com/macros/s/AKfycbzQISzKogNh6a9h3x4Ei6nVK2hYRQkUJNpra0YTY4KcrPDeamps-4rAm67NhMId_DAj/exec"; // unchanged from your current version
+    const DATA_URL = "/.netlify/functions/get-connectors";  // ✅ use Netlify function
+    const REQUEST_URL =
+    "https://script.google.com/macros/s/AKfycbzQISzKogNh6a9h3x4Ei6nVK2hYRQkUJNpra0YTY4KcrPDeamps-4rAm67NhMId_DAj/exec"; // your Chat request script
     const STORAGE_KEY = "connectorInventoryFiltersV1";
+
+const PAGE_SIZE = 100;   // ✅ 100 items per page now
+
 
     const PAGE_SIZE = 100;
     let connectorData = [];
