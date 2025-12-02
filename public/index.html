@@ -1614,6 +1614,23 @@
       };
     }
 
+    function requireInventoryCode() {
+  const code = window.prompt("Enter access code to modify inventory:");
+
+  if (code === null) {
+    // User hit Cancel
+    return false;
+  }
+
+  if (code.trim() === "1575") {
+    return true;
+  }
+
+  alert("Incorrect code.");
+  return false;
+}
+
+
     async function loadData() {
       try {
         resultsCount.textContent = "Loading inventory…";
@@ -2066,9 +2083,11 @@
           document.body.removeChild(temp);
         }
       } else if (action === "updateInventory") {
-        openInventoryModal("update");
+        if (!requireInventoryCode()) return;
+        openInventoryModal("update", selectedItem);
       } else if (action === "addInventory") {
-        openInventoryModal("add");
+        if (!requireInventoryCode()) return;
+        openInventoryModal("add", selectedItem);
       }
     });
 
