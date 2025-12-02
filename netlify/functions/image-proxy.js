@@ -1,40 +1,36 @@
 // netlify/functions/image-proxy.js
 
-// This function proxies a Google Drive image so the browser only
-// talks to your Netlify domain (avoids ORB blocking).
-
 exports.handler = async (event) => {
   try {
-    const id = event.queryStringParameters?.id;
+    const id = event.queryStringParameters && event.queryStringParameters.id;
     if (!id) {
-      return { statusCode: 400, body: "Missing id" };
+      return { statusCode: 400, body: "Missing id parameter" };
     }
 
-    // Use a direct-download style URL from Drive
-    const driveUrl = `https://drive.google.com/uc?export=download&id=${encodeURIComponent(
-      id
-    )}`;
+    const driveUrl =
+      "https://drive.usercontent.google.com/download?id=" +
+      encodeURIComponent(id) +
+      "&export=view";
 
-    // Node 18+ has global fetch available in Netlify functions
-    const res = await fetch(driveUrl);
+    const resp = await fetch(driveUrl);
 
-    if (!res.ok) {
-      console.error("Drive fetch failed", res.status, await res.text());
+    if (!resp.ok) {
+      console.error("Drive fetch failed:", resp.status, await resp.text());
       return {
         statusCode: 502,
-        body: `Upstream error ${res.status}`,
+        body: "Failed to fetch image from Drive",
       };
     }
 
-    const contentType = res.headers.get("content-type") || "image/jpeg";
-    const arrayBuffer = await res.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
+    const contentType = resp.headers.get("content-type") || "image/jpeg";
+    const arrayBuf = await resp.arrayBuffer();
+    const buffer = Buffer.from(arrayBuf);
 
     return {
       statusCode: 200,
       headers: {
         "Content-Type": contentType,
-        "Cache-Control": "public, max-age=31536000",
+        "Cache-Control": "public, max-age=86400",
       },
       body: buffer.toString("base64"),
       isBase64Encoded: true,
@@ -43,7 +39,7 @@ exports.handler = async (event) => {
     console.error("image-proxy error:", err);
     return {
       statusCode: 500,
-      body: "Internal error",
+      body: "Internal Server Error",
     };
   }
 };
