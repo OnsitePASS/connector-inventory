@@ -8,36 +8,54 @@ function formatTermRange(raw) {
   return match ? `T:${match[1].replace(/\s+/g, "")}` : String(raw);
 }
 
-// Turn any Google Drive URL into a thumbnail URL
-function toDriveThumbnail(url) {
-  if (!url) return "";
-  let str = String(url).trim();
+/**
+ * Turn *any* Drive-ish value into a 400px thumbnail URL.
+ *
+ * Handles:
+ *   - https://drive.google.com/file/d/ID/view?...
+ *   - https://drive.google.com/uc?export=view&id=ID
+ *   - https://drive.google.com/thumbnail?id=ID&sz=w400
+ *   - bare IDs like 1DkJngqekuCgrFz0wF13MlOVPj59Zk3cj
+ * Falls back to returning the original string for non-Drive URLs.
+ */
+function buildDriveThumbnailUrl(raw) {
+  if (!raw) return "";
+  let str = String(raw).trim();
 
   // Strip surrounding quotes if present
   str = str.replace(/^['"]+|['"]+$/g, "");
 
-  // If it's not a Drive URL, just return as-is
-  if (!str.includes("drive.google.com")) return str;
-
   let id = null;
 
-  // Pattern: ...?id=FILE_ID...
-  const idParam = str.match(/[?&]id=([^&]+)/);
+  // Case 1: ...?id=FILE_ID...
+  const idParam = str.match(/[?&]id=([a-zA-Z0-9_-]+)/);
   if (idParam) {
     id = idParam[1];
   }
 
-  // Pattern: .../file/d/FILE_ID/...
+  // Case 2: .../file/d/FILE_ID/...
   if (!id) {
-    const fileMatch = str.match(/\/file\/d\/([^/]+)/);
+    const fileMatch = str.match(/\/d\/([a-zA-Z0-9_-]+)/);
     if (fileMatch) {
       id = fileMatch[1];
     }
   }
 
-  if (!id) return str;
+  // Case 3: looks like a bare Drive ID (no URL at all)
+  if (!id) {
+    const bareMatch = str.match(/^[a-zA-Z0-9_-]{20,}$/);
+    if (bareMatch) {
+      id = bareMatch[0];
+    }
+  }
 
-  // Thumbnail endpoint – Chrome is happier with this for <img> tags
+  // If we still don't have an ID AND it's not a drive URL, just return as-is
+  if (!id) {
+    // Let non-Drive URLs (e.g. CDN) pass through unchanged
+    return str;
+  }
+
+  // Thumbnail endpoint – keeps payload small and works well in <img>
   return `https://drive.google.com/thumbnail?id=${id}&sz=w400`;
 }
 
@@ -117,8 +135,8 @@ exports.handler = async function (event) {
       const get = (i) => (row[i] !== undefined ? row[i] : "");
 
       const partNumber = get(COL.partNumber);
-      const desc1 = get(COL.desc1);        // Description (Col O)
-      const altNumber = get(COL.altNumber); // Alt Number (Col P)
+      const desc1 = get(COL.desc1);          // Description (Col O)
+      const altNumber = get(COL.altNumber);  // Alt Number (Col P)
 
       // Description column (web) → only Column O
       const description = desc1 || "";
@@ -142,7 +160,7 @@ exports.handler = async function (event) {
       if (get(COL.toyota)) oems.push("Toyota");
 
       const rawPic = get(COL.picture);
-      const pictureUrl = toDriveThumbnail(rawPic);
+      const pictureUrl = buildDriveThumbnailUrl(rawPic);
 
       items.push({
         picture: pictureUrl,
