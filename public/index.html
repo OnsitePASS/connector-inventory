@@ -13,14 +13,17 @@
 
     body {
       margin: 0;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: radial-gradient(circle at top left, #e0edff 0, #f5f7fb 45%, #ffffff 100%);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+        sans-serif;
+      background: radial-gradient(circle at top left, #e0edff 0, #f5f7fb 45%,
+        #ffffff 100%);
       color: #0f172a;
       display: flex;
     }
 
+    /* wider page so table has more room */
     .page {
-      max-width: 1100px;
+      max-width: 1400px;
       margin: 24px auto;
       padding: 0 16px;
       flex: 1;
@@ -41,24 +44,14 @@
     }
 
     .card-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: baseline;
-      gap: 12px;
-      margin-bottom: 12px;
+      display: flex; justify-content: space-between; align-items: baseline;
+      gap: 12px; margin-bottom: 12px;
       flex: 0 0 auto;
     }
 
-    .card-header h1 {
-      font-size: 1.35rem;
-      margin: 0;
-      letter-spacing: 0.03em;
-    }
-
+    .card-header h1 { font-size: 1.35rem; margin: 0; letter-spacing: 0.03em; }
     .card-header span {
-      font-size: 0.78rem;
-      color: #6b7280;
-      text-transform: uppercase;
+      font-size: 0.78rem; color: #6b7280; text-transform: uppercase;
       letter-spacing: 0.08em;
     }
 
@@ -90,48 +83,29 @@
       font-size: 0.8rem;
       position: relative;
     }
-
-    .field label {
-      font-weight: 500;
-      color: #4b5563;
-    }
+    .field label { font-weight: 500; color: #4b5563; }
 
     .field input {
-      border-radius: 999px;
-      border: 1px solid #cbd5e1;
-      padding: 6px 10px;
-      font-size: 0.85rem;
-      outline: none;
+      border-radius: 999px; border: 1px solid #cbd5e1;
+      padding: 6px 10px; font-size: 0.85rem; outline: none;
       background: #f9fafb;
       transition: border-color .15s ease, box-shadow .15s ease, background .15s ease;
     }
-
     .field input:focus {
-      border-color: #2563eb;
-      background: #ffffff;
+      border-color: #2563eb; background: #ffffff;
       box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.3);
     }
 
     .search-wrapper { position: relative; }
     .search-wrapper input { padding-right: 26px; }
-
     .clear-btn {
-      position: absolute;
-      right: 8px;
-      top: 50%;
-      transform: translateY(-50%);
-      border: none;
-      background: transparent;
-      font-size: 14px;
-      cursor: pointer;
-      color: #9ca3af;
-      padding: 0;
-      line-height: 1;
+      position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+      border: none; background: transparent; font-size: 14px;
+      cursor: pointer; color: #9ca3af; padding: 0; line-height: 1;
     }
-
     .clear-btn:hover { color: #6b7280; }
 
-    /* Custom multi-select "fake dropdown" */
+    /* Custom multi-select */
     .multi-select {
       border-radius: 999px;
       border: 1px solid #cbd5e1;
@@ -238,14 +212,9 @@
     }
 
     .toolbar {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin: 4px 0 6px;
-      font-size: 0.8rem;
-      color: #6b7280;
-      gap: 10px;
-      flex-wrap: wrap;
+      display: flex; justify-content: space-between; align-items: center;
+      margin: 4px 0 6px; font-size: 0.8rem; color: #6b7280;
+      gap: 10px; flex-wrap: wrap;
       flex: 0 0 auto;
     }
 
@@ -257,48 +226,15 @@
     }
 
     .toolbar button {
-      border-radius: 999px;
-      border: none;
-      padding: 5px 12px;
-      font-size: 0.8rem;
-      cursor: pointer;
-      background: #0f172a;
-      color: #f9fafb;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
+      border-radius: 999px; border: none; padding: 5px 12px;
+      font-size: 0.8rem; cursor: pointer; background: #0f172a; color: #f9fafb;
+      display: inline-flex; align-items: center; gap: 6px;
       box-shadow: 0 8px 18px rgba(15, 23, 42, 0.25);
       transition: transform .12s ease, box-shadow .12s ease, background .12s ease;
     }
-
     .toolbar button:hover {
-      background: #111827;
-      transform: translateY(-1px);
+      background: #111827; transform: translateY(-1px);
       box-shadow: 0 12px 24px rgba(15, 23, 42, 0.3);
-    }
-
-    .pager {
-      display: flex;
-      justify-content: flex-end;
-      align-items: center;
-      gap: 8px;
-      margin: 4px 0 8px;
-      font-size: 0.78rem;
-      color: #4b5563;
-    }
-
-    .pager button {
-      border-radius: 999px;
-      border: 1px solid #cbd5e1;
-      padding: 3px 10px;
-      font-size: 0.78rem;
-      background: #ffffff;
-      cursor: pointer;
-    }
-
-    .pager button:disabled {
-      opacity: 0.4;
-      cursor: default;
     }
 
     .tiny-check {
@@ -309,14 +245,21 @@
       color: #4b5563;
       white-space: nowrap;
     }
-
     .tiny-check input {
       width: 12px;
       height: 12px;
       margin: 0;
     }
 
-    /* Action bar below toolbar */
+    .stock-select {
+      border-radius: 999px;
+      border: 1px solid #cbd5e1;
+      padding: 4px 8px;
+      font-size: 0.78rem;
+      background: #ffffff;
+    }
+
+    /* Action bar */
     .action-bar {
       display: none;
       align-items: center;
@@ -329,62 +272,70 @@
       font-size: 0.8rem;
       flex: 0 0 auto;
     }
-
     .action-selected {
       font-weight: 500;
       color: #1f2937;
     }
-
     .action-selected span {
       font-weight: 600;
     }
-
     .action-controls {
       display: flex;
       align-items: center;
       gap: 8px;
       flex-wrap: wrap;
     }
-
     .action-controls label {
       font-weight: 500;
       color: #4b5563;
     }
-
     .action-controls select {
-      border-radius: 999px;
-      border: 1px solid #cbd5e1;
-      padding: 4px 10px;
-      font-size: 0.8rem;
-      background: #ffffff;
+      border-radius: 999px; border: 1px solid #cbd5e1;
+      padding: 4px 10px; font-size: 0.8rem; background: #ffffff;
     }
-
     .action-controls button {
-      border-radius: 999px;
-      border: none;
-      padding: 4px 12px;
-      font-size: 0.8rem;
-      cursor: pointer;
-      background: #2563eb;
-      color: #f9fafb;
+      border-radius: 999px; border: none;
+      padding: 4px 12px; font-size: 0.8rem;
+      cursor: pointer; background: #2563eb; color: #f9fafb;
     }
-
     .action-controls button:hover {
       background: #1d4ed8;
     }
-
     .action-status {
       min-width: 140px;
       font-size: 0.78rem;
       color: #4b5563;
     }
 
-    /* TABLE AREA */
-    .table-wrapper {
-      border-radius: 12px;
-      border: 1px solid #e5e7eb;
-      overflow: hidden;
+    /* Pager (100 items per page) */
+    .pager {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      gap: 8px;
+      margin: 4px 0 8px;
+      font-size: 0.8rem;
+      color: #6b7280;
+      flex: 0 0 auto;
+    }
+    .pager button {
+      border-radius: 999px;
+      border: 1px solid #cbd5e1;
       background: #ffffff;
+      padding: 3px 10px;
+      font-size: 0.78rem;
+      cursor: pointer;
+    }
+    .pager button:disabled {
+      opacity: 0.4;
+      cursor: default;
+      box-shadow: none;
+    }
+
+    /* Table */
+    .table-wrapper {
+      border-radius: 12px; border: 1px solid #e5e7eb;
+      overflow: hidden; background: #ffffff;
       flex: 1 1 auto;
       min-height: 0;
       overflow-y: auto;
@@ -398,12 +349,7 @@
       table-layout: fixed;
     }
 
-    thead {
-      background: #f3f4f6;
-      position: sticky;
-      top: 0;
-      z-index: 1;
-    }
+    thead { background: #f3f4f6; position: sticky; top: 0; z-index: 1; }
 
     th, td {
       padding: 6px 6px;
@@ -417,16 +363,15 @@
     }
 
     th {
-      font-weight: 600;
-      color: #4b5563;
-      user-select: none;
+      font-weight: 600; color: #4b5563; user-select: none;
     }
-
     th.sortable { cursor: pointer; }
     th.sortable:hover { background: #e5e7eb; }
 
     tbody tr:nth-child(even):not(.details-row) { background: #f9fafb; }
-    tbody tr:hover:not(.details-row):not(.selected-row) { background: #e0f2fe; }
+    tbody tr:hover:not(.details-row):not(.selected-row) {
+      background: #e0f2fe;
+    }
 
     .data-row.selected-row {
       background: #dbeafe !important;
@@ -434,33 +379,21 @@
     }
 
     .tag {
-      display: inline-flex;
-      align-items: center;
-      border-radius: 999px;
-      border: 1px solid #d1d5db;
-      padding: 1px 6px;
-      font-size: 0.68rem;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      background: #f9fafb;
+      display: inline-flex; align-items: center; border-radius: 999px;
+      border: 1px solid #d1d5db; padding: 1px 6px; font-size: 0.68rem;
+      text-transform: uppercase; letter-spacing: 0.06em; background: #f9fafb;
     }
 
     .qty-pill {
-      border-radius: 999px;
-      padding: 1px 8px;
-      font-size: 0.7rem;
-      font-variant-numeric: tabular-nums;
+      border-radius: 999px; padding: 1px 8px;
+      font-size: 0.7rem; font-variant-numeric: tabular-nums;
       display: inline-block;
     }
-
     .qty-ok { background: #ecfdf5; color: #047857; }
     .qty-low { background: #fffbeb; color: #92400e; }
     .qty-zero { background: #fef2f2; color: #b91c1c; }
 
-    .muted {
-      color: #9ca3af;
-      font-style: italic;
-    }
+    .muted { color: #9ca3af; font-style: italic; }
 
     .thumb-img {
       width: 100%;
@@ -481,7 +414,9 @@
       padding-right: 2px;
     }
 
-    .details-row { background: #f9fafb; }
+    .details-row {
+      background: #f9fafb;
+    }
 
     .details-cell {
       padding-top: 0;
@@ -494,6 +429,14 @@
       grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
       gap: 4px 12px;
       font-size: 0.75rem;
+    }
+
+    .details-item-label {
+      font-weight: 600;
+      color: #4b5563;
+    }
+    .details-item-value {
+      color: #111827;
     }
 
     .details-term-block {
@@ -523,14 +466,22 @@
       color: #4b5563;
     }
 
+    .shop-cell, .shop-qty {
+      background: #eff6ff;
+    }
+    .van-cell, .van-qty {
+      background: #fefce8;
+    }
+
+    /* widen description column a bit now that page is wider */
     thead th:nth-child(1),
     tbody td:nth-child(1) { width: 24px; max-width: 24px; }   /* expander */
     thead th:nth-child(2),
     tbody td:nth-child(2) { width: 215px; max-width: 215px; } /* Pic */
     thead th:nth-child(3),
-    tbody td:nth-child(3) { width: 120px; max-width: 120px; } /* Part # */
+    tbody td:nth-child(3) { width: 130px; max-width: 130px; } /* Part # */
     thead th:nth-child(4),
-    tbody td:nth-child(4) { width: 120px; max-width: 120px; } /* Desc */
+    tbody td:nth-child(4) { width: 200px; max-width: 200px; } /* Desc */
     thead th:nth-child(5),
     tbody td:nth-child(5) { width: 60px; max-width: 60px; }   /* Shop */
     thead th:nth-child(6),
@@ -554,7 +505,7 @@
     <div class="card">
       <div class="card-header">
         <div>
-          <h1>Connector Inventory</h1>
+          <h1>Connector Inventory - Multi-Select_Updating</h1>
           <span>Search · Filter · Locate</span>
         </div>
         <div style="font-size:0.8rem; color:#6b7280;">OnsitePASS · Internal</div>
@@ -570,9 +521,9 @@
           </div>
         </div>
 
-        <!-- Type / Category multi-select (Col N) -->
+        <!-- Type / Category multi-select -->
         <div class="field" data-filter="category">
-          <label>Type (Col N)</label>
+          <label>Type</label>
           <div class="multi-select" data-filter-toggle="category">
             <span class="multi-select-label multi-select-placeholder" id="categoryLabel">All</span>
             <span class="multi-select-caret">▾</span>
@@ -587,9 +538,9 @@
           </div>
         </div>
 
-        <!-- Pins multi-select (Stats!A2:A → Col M) -->
+        <!-- Pins multi-select -->
         <div class="field" data-filter="pins">
-          <label>Pin Count (Stats!A2:A → Col M)</label>
+          <label>Pin Count</label>
           <div class="multi-select" data-filter-toggle="pins">
             <span class="multi-select-label multi-select-placeholder" id="pinsLabel">Any</span>
             <span class="multi-select-caret">▾</span>
@@ -602,9 +553,9 @@
           </div>
         </div>
 
-        <!-- Gender multi-select (Col L) -->
+        <!-- Gender multi-select -->
         <div class="field" data-filter="gender">
-          <label>Gender (Col L)</label>
+          <label>Gender</label>
           <div class="multi-select" data-filter-toggle="gender">
             <span class="multi-select-label multi-select-placeholder" id="genderLabel">Any</span>
             <span class="multi-select-caret">▾</span>
@@ -619,9 +570,9 @@
           </div>
         </div>
 
-        <!-- Terminal size multi-select (Col AP) -->
+        <!-- Terminal size multi-select -->
         <div class="field" data-filter="termSize">
-          <label>Terminal Size (Col AP)</label>
+          <label>Terminal Size</label>
           <div class="multi-select" data-filter-toggle="termSize">
             <span class="multi-select-label multi-select-placeholder" id="termSizeLabel">Any</span>
             <span class="multi-select-caret">▾</span>
@@ -630,27 +581,7 @@
             <div class="multi-select-menu-header">
               <button type="button" class="multi-select-clear" data-clear="termSize">Clear</button>
             </div>
-            <label><input type="checkbox" value="0.25"> 0.25</label>
-            <label><input type="checkbox" value="0.5"> 0.5</label>
-            <label><input type="checkbox" value="0.63"> 0.63</label>
-            <label><input type="checkbox" value="0.64"> 0.64</label>
-            <label><input type="checkbox" value="1.0"> 1.0</label>
-            <label><input type="checkbox" value="1.2"> 1.2</label>
-            <label><input type="checkbox" value="1.3"> 1.3</label>
-            <label><input type="checkbox" value="1.5"> 1.5</label>
-            <label><input type="checkbox" value="1.6"> 1.6</label>
-            <label><input type="checkbox" value="1.8"> 1.8</label>
-            <label><input type="checkbox" value="2.2"> 2.2</label>
-            <label><input type="checkbox" value="2.3"> 2.3</label>
-            <label><input type="checkbox" value="2.5"> 2.5</label>
-            <label><input type="checkbox" value="2.6"> 2.6</label>
-            <label><input type="checkbox" value="2.8"> 2.8</label>
-            <label><input type="checkbox" value="4.8"> 4.8</label>
-            <label><input type="checkbox" value="6.3"> 6.3</label>
-            <label><input type="checkbox" value="7.8"> 7.8</label>
-            <label><input type="checkbox" value="8.0"> 8.0</label>
-            <label><input type="checkbox" value="9.5"> 9.5</label>
-            <label><input type="checkbox" value="12.0"> 12.0</label>
+            <!-- options added dynamically from termSizeOptions -->
           </div>
         </div>
       </div>
@@ -664,7 +595,7 @@
 
         <!-- Manufacturer multi-select -->
         <div class="field" data-filter="manufacturer">
-          <label>Supplier (Stats!E2:E → Col Q)</label>
+          <label>Supplier</label>
           <div class="multi-select" data-filter-toggle="manufacturer">
             <span class="multi-select-label multi-select-placeholder" id="manufacturerLabel">All</span>
             <span class="multi-select-caret">▾</span>
@@ -673,7 +604,7 @@
             <div class="multi-select-menu-header">
               <button type="button" class="multi-select-clear" data-clear="manufacturer">Clear</button>
             </div>
-            <!-- dynamically filled -->
+            <!-- options added dynamically -->
           </div>
         </div>
 
@@ -690,7 +621,7 @@
             </div>
             <label><input type="checkbox" value="Ford"> Ford</label>
             <label><input type="checkbox" value="GM"> GM</label>
-            <label><input type="checkbox" value="HyundaiKia"> Hyundai/Kia</label>
+            <label><input type="checkbox" value="Hyundai/Kia"> Hyundai/Kia</label>
             <label><input type="checkbox" value="Nissan"> Nissan</label>
             <label><input type="checkbox" value="Toyota"> Toyota</label>
           </div>
@@ -703,11 +634,19 @@
           <label class="tiny-check">
             <input type="checkbox" id="hasPictureFilter" /> Pic only
           </label>
+          <label class="tiny-check">
+            <input type="checkbox" id="hasTerminalsFilter" /> Term only
+          </label>
+          <select id="stockFilter" class="stock-select">
+            <option value="">All stock</option>
+            <option value="shop">Shop &gt; 0</option>
+            <option value="van">Van &gt; 0</option>
+          </select>
           <button type="button" id="resetFiltersBtn"><span>↺</span> Reset filters</button>
         </div>
       </div>
 
-      <!-- Action bar: selection + actions -->
+      <!-- Action bar -->
       <div id="actionBar" class="action-bar">
         <div class="action-selected">
           Selected: <span id="selectedPart">(none)</span>
@@ -724,7 +663,7 @@
       </div>
 
       <!-- Pager -->
-      <div id="pager" class="pager">
+      <div class="pager">
         <button type="button" id="prevPageBtn">‹ Prev</button>
         <span id="pageInfo">Page 1 of 1 · 0 items</span>
         <button type="button" id="nextPageBtn">Next ›</button>
@@ -749,6 +688,7 @@
               <th>Supplier</th>
             </tr>
           </thead>
+
           <tbody id="resultsBody">
             <tr><td colspan="12" class="muted">Loading…</td></tr>
           </tbody>
@@ -758,16 +698,14 @@
   </div>
 
   <script>
-    const DATA_URL = "/.netlify/functions/get-connectors";
-    const REQUEST_URL =
-      "https://script.google.com/macros/s/AKfycbzQISzKogNh6a9h3x4Ei6nVK2hYRQkUJNpra0YTY4KcrPDeamps-4rAm67NhMId_DAj/exec";
+    const WEB_APP_URL =
+      "YOUR_WEB_APP_URL_HERE"; // unchanged from your current version
     const STORAGE_KEY = "connectorInventoryFiltersV1";
 
-    const PAGE_SIZE = 50;
-    let currentPage = 1;
-    let lastTotalPages = 1;
-
+    const PAGE_SIZE = 100;
     let connectorData = [];
+    let filteredData = [];
+    let currentPage = 1;
     let currentSort = { key: "partNumber", dir: "asc" };
     let selectedItem = null;
     let openDetailsRow = null;
@@ -779,7 +717,10 @@
     const resultsBody = document.getElementById("resultsBody");
     const resultsCount = document.getElementById("resultsCount");
     const resetFiltersBtn = document.getElementById("resetFiltersBtn");
+
     const hasPictureCheckbox = document.getElementById("hasPictureFilter");
+    const hasTerminalsCheckbox = document.getElementById("hasTerminalsFilter");
+    const stockFilter = document.getElementById("stockFilter");
 
     const actionBar = document.getElementById("actionBar");
     const selectedPartSpan = document.getElementById("selectedPart");
@@ -804,7 +745,27 @@
       gender: new Set(),
       termSize: new Set(),
       manufacturer: new Set(),
-      oem: new Set(),
+      oem: new Set()
+    };
+
+    const DETAIL_LABELS = {
+      termTub1: "Term Tub",
+      termBin1: "Term Bin",
+      terminal1: "Terminal",
+      crimper1: "Crimper 1",
+      crimper2: "Crimper 2",
+      terminal2: "Terminal 2",
+      termBin2: "Term Bin 2",
+      termTub2: "Term Tub 2",
+      terminalManufacturer: "Terminal Mfr",
+      plug1: "Plug 1",
+      plug2: "Plug 2",
+      cover: "Cover",
+      passNumber: "PASS #",
+      price: "Price",
+      duplicateCheck: "Duplicate Check",
+      history: "History",
+      terminalSizes: "Terminal Sizes"
     };
 
     function qtyClass(qty) {
@@ -817,15 +778,15 @@
       return String(str || "").toLowerCase().replace(/\s+/g, " ").trim();
     }
 
-    function normalizeGenderValue(raw) {
-      const v = normalize(raw);
-      if (!v) return "";
-      if (v.includes("m & f")) return "m & f";
-      if (v.includes("m") && v.includes("f") && !v.includes("male") && !v.includes("female"))
-        return "m & f";
-      if (v.startsWith("m")) return "male";
-      if (v.startsWith("f")) return "female";
-      return v;
+    function normalizeTerminalLocation(raw) {
+      if (!raw) return "";
+      let cleaned = String(raw)
+        .replace(/terminals?/gi, "")
+        .replace(/#/g, "")
+        .trim();
+      if (!cleaned) return "";
+      cleaned = cleaned.replace(/\s*-\s*/g, "-");
+      return "T:" + cleaned;
     }
 
     function updateMultiLabel(filterName) {
@@ -860,9 +821,8 @@
           break;
       }
 
-      const toggle = document.querySelector(
-        `.multi-select[data-filter-toggle="${filterName}"]`
-      );
+      const toggle =
+        document.querySelector(`.multi-select[data-filter-toggle="${filterName}"]`);
       if (!labelEl || !toggle) return;
 
       if (!set.size) {
@@ -892,9 +852,11 @@
             gender: Array.from(multiState.gender),
             termSize: Array.from(multiState.termSize),
             manufacturer: Array.from(multiState.manufacturer),
-            oem: Array.from(multiState.oem),
+            oem: Array.from(multiState.oem)
           },
           hasPicture: hasPictureCheckbox.checked,
+          hasTerminals: hasTerminalsCheckbox.checked,
+          stockFilter: stockFilter.value || ""
         };
         localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
       } catch (e) {
@@ -902,41 +864,35 @@
       }
     }
 
-    function updatePager(page, totalPages, totalCount) {
-      pageInfo.textContent = `Page ${page} of ${totalPages} · ${totalCount} item${
-        totalCount === 1 ? "" : "s"
-      }`;
-      prevPageBtn.disabled = page <= 1;
-      nextPageBtn.disabled = page >= totalPages;
-      lastTotalPages = totalPages;
-    }
-
     function applyFilters() {
       const search = normalize(searchInput.value);
       const loc = normalize(locationFilter.value);
 
       const catsSelected = Array.from(multiState.category).map(normalize);
-      const pinsSelected = Array.from(multiState.pins).map((v) => String(v));
-      const gendersSelected = Array.from(multiState.gender).map(normalizeGenderValue);
-      const termSizesSelected = Array.from(multiState.termSize).map(String);
+      const pinsSelected = Array.from(multiState.pins);
+      const gendersSelected = Array.from(multiState.gender).map(normalize);
+      const termSizesSelected = Array.from(multiState.termSize);
       const mfrSelected = Array.from(multiState.manufacturer).map(normalize);
       const oemSelected = Array.from(multiState.oem).map(normalize);
-      const hasPic = hasPictureCheckbox.checked;
 
-      let filtered = connectorData.filter((item) => {
+      const hasPic = hasPictureCheckbox.checked;
+      const hasTerm = hasTerminalsCheckbox.checked;
+      const stockMode = stockFilter.value;
+
+      let filtered = connectorData.filter(item => {
         if (search) {
-          const haystack = normalize(
-            [
-              item.partNumber,
-              item.description,
-              item.vehicle,
-              item.shop,
-              item.van,
-              item.manufacturer,
-              item.gender,
-              item.terminalSizes,
-            ].join(" ")
-          );
+          const haystack = normalize([
+            item.partNumber,
+            item.description,
+            item.altNumber,
+            item.vehicle,
+            item.shop,
+            item.van,
+            item.manufacturer,
+            item.gender,
+            item.terminalSizes,
+            item.passNumber
+          ].join(" "));
           if (!haystack.includes(search)) return false;
         }
 
@@ -951,22 +907,18 @@
         }
 
         if (gendersSelected.length) {
-          const gNorm = normalizeGenderValue(item.gender);
+          const gNorm = normalize(item.gender);
           if (!gendersSelected.includes(gNorm)) return false;
         }
 
         if (termSizesSelected.length) {
-          const raw = String(item.terminalSizes || "");
-          const tokens = raw
-            .split(/[,/]/)
-            .join(" ")
-            .split(/\s+/)
-            .filter(Boolean);
-          if (!tokens.some((t) => termSizesSelected.includes(t))) return false;
+          const tsRaw = String(item.terminalSizes || "");
+          const tokens = tsRaw.split(/\s+/).filter(Boolean);
+          if (!tokens.some(t => termSizesSelected.includes(t))) return false;
         }
 
         if (loc) {
-          const combinedLoc = normalize((item.shop || "") + " " + (item.van || ""));
+          const combinedLoc = normalize(item.shop + " " + item.van);
           if (!combinedLoc.includes(loc)) return false;
         }
 
@@ -976,12 +928,26 @@
         }
 
         if (oemSelected.length) {
-          const itemOems = (item.oems || []).map((o) => normalize(o));
-          if (!oemSelected.some((sel) => itemOems.includes(sel))) return false;
+          const vehNorm = normalize(item.vehicle);
+          if (!oemSelected.some(o => vehNorm.includes(o))) return false;
+        }
+
+        if (stockMode === "shop") {
+          if (!((Number(item.shopQty) || 0) > 0)) return false;
+        } else if (stockMode === "van") {
+          if (!((Number(item.vanQty) || 0) > 0)) return false;
         }
 
         if (hasPic) {
           if (!(item.picture && /^https?:\/\//.test(item.picture))) return false;
+        }
+
+        if (hasTerm) {
+          const d = item.details || {};
+          const hasT =
+            (d.terminal1 && String(d.terminal1).trim() !== "") ||
+            (d.terminal2 && String(d.terminal2).trim() !== "");
+          if (!hasT) return false;
         }
 
         return true;
@@ -989,8 +955,7 @@
 
       filtered.sort((a, b) => {
         const { key, dir } = currentSort;
-        let va = a[key],
-          vb = b[key];
+        let va = a[key], vb = b[key];
 
         if (key === "pins") {
           va = Number(va) || 0;
@@ -1005,92 +970,122 @@
         return 0;
       });
 
-      const totalCount = filtered.length;
-      const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
-      if (currentPage > totalPages) currentPage = totalPages;
-
-      const start = (currentPage - 1) * PAGE_SIZE;
-      const pageItems = filtered.slice(start, start + PAGE_SIZE);
-
-      renderResults(pageItems, totalCount);
-      updatePager(currentPage, totalPages, totalCount);
+      filteredData = filtered;
+      currentPage = 1;
+      renderPagedResults();
       saveFilters();
     }
 
-    function createDetailsGrid(details) {
+    function createDetailsGrid(details, altNumber) {
       const grid = document.createElement("div");
       grid.className = "details-grid";
 
-      const makeBlock = (title, main, sub) => {
-        if (!main && !sub) return null;
+      // Alt Number from Column P
+      if (altNumber && String(altNumber).trim() !== "") {
+        const item = document.createElement("div");
+        const labelEl = document.createElement("div");
+        labelEl.className = "details-item-label";
+        labelEl.textContent = "Alt Number";
+        const valueEl = document.createElement("div");
+        valueEl.className = "details-item-value";
+        valueEl.textContent = String(altNumber);
+        item.appendChild(labelEl);
+        item.appendChild(valueEl);
+        grid.appendChild(item);
+      }
+
+      // Terminal 1
+      if (
+        (details.terminal1 && String(details.terminal1).trim() !== "") ||
+        (details.termTub1 && String(details.termTub1).trim() !== "") ||
+        (details.termBin1 && String(details.termBin1).trim() !== "")
+      ) {
         const block = document.createElement("div");
         block.className = "details-term-block";
 
-        const titleEl = document.createElement("div");
-        titleEl.className = "details-term-title";
-        titleEl.textContent = title;
+        const title = document.createElement("div");
+        title.className = "details-term-title";
+        title.textContent = "Terminal";
 
-        const mainEl = document.createElement("div");
-        mainEl.className = "details-term-main";
-        mainEl.textContent = main || "";
+        const main = document.createElement("div");
+        main.className = "details-term-main";
+        main.textContent = String(details.terminal1 || "").trim();
 
-        const subEl = document.createElement("div");
-        subEl.className = "details-term-sub";
-        subEl.textContent = sub || "";
+        const sub = document.createElement("div");
+        sub.className = "details-term-sub";
+        const tub = String(details.termTub1 || "").trim();
+        const bin = String(details.termBin1 || "").trim();
+        sub.textContent = [
+          tub || "",
+          bin ? normalizeTerminalLocation(bin) : ""
+        ].filter(Boolean).join(" · ");
 
-        block.appendChild(titleEl);
-        if (main) block.appendChild(mainEl);
-        if (sub) block.appendChild(subEl);
-
-        return block;
-      };
-
-      // Terminal 1: code from Col Y; sub: W (tub) + X (bin/range)
-      const t1SubParts = [];
-      if (details.terminal1Tub) t1SubParts.push(details.terminal1Tub);
-      if (details.terminal1Range) t1SubParts.push(details.terminal1Range);
-      const t1Sub = t1SubParts.join("   ");
-
-      const t1 = makeBlock(
-        "TERMINAL 1",
-        details.terminal1Code,
-        t1Sub
-      );
-
-      // Terminal 2: code from Col AB; sub: AD (tub) + AC (bin/range)
-      const t2SubParts = [];
-      if (details.terminal2Tub) t2SubParts.push(details.terminal2Tub);
-      if (details.terminal2Range) t2SubParts.push(details.terminal2Range);
-      const t2Sub = t2SubParts.join("   ");
-
-      const t2 = makeBlock(
-        "TERMINAL 2",
-        details.terminal2Code,
-        t2Sub
-      );
-
-      // Mating
-      const mating = makeBlock("MATING", details.mating || "", "");
-
-      // Price
-      let priceText = "";
-      if (typeof details.price === "number") {
-        priceText = `$${details.price.toFixed(2)}`;
-      } else if (details.price) {
-        priceText = String(details.price);
+        block.appendChild(title);
+        block.appendChild(main);
+        block.appendChild(sub);
+        grid.appendChild(block);
       }
-      const price = makeBlock("PRICE", priceText, "");
 
-      [t1, t2, mating, price].forEach((b) => b && grid.appendChild(b));
+      // Terminal 2
+      if (
+        (details.terminal2 && String(details.terminal2).trim() !== "") ||
+        (details.termBin2 && String(details.termBin2).trim() !== "") ||
+        (details.termTub2 && String(details.termTub2).trim() !== "")
+      ) {
+        const block = document.createElement("div");
+        block.className = "details-term-block";
 
-      // OEM row
-      const ford = makeBlock("FORD", details.ford || "", "");
-      const gm = makeBlock("GM", details.gm || "", "");
-      const hk = makeBlock("HYUNDAI/KIA", details.hyundaiKia || "", "");
-      const nissan = makeBlock("NISSAN", details.nissan || "", "");
-      const toyota = makeBlock("TOYOTA", details.toyota || "", "");
+        const title = document.createElement("div");
+        title.className = "details-term-title";
+        title.textContent = "Terminal 2";
 
-      [ford, gm, hk, nissan, toyota].forEach((b) => b && grid.appendChild(b));
+        const main = document.createElement("div");
+        main.className = "details-term-main";
+        main.textContent = String(details.terminal2 || "").trim();
+
+        const sub = document.createElement("div");
+        sub.className = "details-term-sub";
+        const bin2 = String(details.termBin2 || "").trim();
+        const tub2 = String(details.termTub2 || "").trim();
+        sub.textContent = [
+          bin2 ? normalizeTerminalLocation(bin2) : "",
+          tub2 || ""
+        ].filter(Boolean).join(" · ");
+
+        block.appendChild(title);
+        block.appendChild(main);
+        block.appendChild(sub);
+        grid.appendChild(block);
+      }
+
+      const skipKeys = new Set([
+        "termTub1", "termBin1", "terminal1",
+        "termTub2", "termBin2", "terminal2",
+        "used"
+      ]);
+
+      Object.keys(DETAIL_LABELS).forEach(key => {
+        if (skipKeys.has(key)) return;
+
+        const val = details[key];
+        if (val === undefined || val === null || String(val).trim() === "") return;
+
+        const item = document.createElement("div");
+
+        const labelEl = document.createElement("div");
+        labelEl.className = "details-item-label";
+        labelEl.textContent = DETAIL_LABELS[key];
+
+        const valueEl = document.createElement("div");
+        valueEl.className = "details-item-value";
+        valueEl.textContent = (key === "price" && typeof val === "number")
+          ? "$" + val.toFixed(2)
+          : String(val);
+
+        item.appendChild(labelEl);
+        item.appendChild(valueEl);
+        grid.appendChild(item);
+      });
 
       if (!grid.children.length) {
         const empty = document.createElement("div");
@@ -1108,16 +1103,18 @@
       actionBar.style.display = "flex";
       actionStatus.textContent = "";
 
-      document.querySelectorAll(".data-row.selected-row").forEach((r) => {
+      document.querySelectorAll(".data-row.selected-row").forEach(r => {
         r.classList.remove("selected-row");
       });
-      if (rowEl) rowEl.classList.add("selected-row");
+      if (rowEl) {
+        rowEl.classList.add("selected-row");
+      }
     }
 
-    function renderResults(data, totalCount) {
+    function renderResults(pageItems) {
       resultsBody.innerHTML = "";
 
-      if (!data.length) {
+      if (!pageItems.length) {
         const row = document.createElement("tr");
         const cell = document.createElement("td");
         cell.colSpan = 12;
@@ -1125,14 +1122,14 @@
         cell.textContent = "No matching connectors.";
         row.appendChild(cell);
         resultsBody.appendChild(row);
-        resultsCount.textContent = "Showing 0 items";
         return;
       }
 
-      data.forEach((item) => {
+      pageItems.forEach((item) => {
         const tr = document.createElement("tr");
         tr.className = "data-row";
 
+        // Expander
         const tdExp = document.createElement("td");
         const exp = document.createElement("span");
         exp.className = "expander";
@@ -1140,33 +1137,37 @@
         tdExp.appendChild(exp);
         tr.appendChild(tdExp);
 
-        // Pic cell
-const tdPic = document.createElement("td");
-if (item.picture) {
-  const img = document.createElement("img");
-  img.src = item.picture;
-  img.alt = item.partNumber || "Connector";
-  img.className = "thumb-img";
-  img.addEventListener("click", (e) => {
-    e.stopPropagation();
-    window.open(item.picture, "_blank");
-  });
-  tdPic.appendChild(img);
-} else {
-  tdPic.innerHTML = '<span class="muted">—</span>';
-}
-tr.appendChild(tdPic);
+        // Pic
+        const tdPic = document.createElement("td");
+        if (item.picture && /^https?:\/\//.test(item.picture)) {
+          const img = document.createElement("img");
+          img.src = item.picture;
+          img.alt = item.partNumber || "Connector";
+          img.className = "thumb-img";
+          img.addEventListener("click", e => {
+            e.stopPropagation();
+            window.open(item.picture, "_blank");
+          });
+          tdPic.appendChild(img);
+        } else {
+          tdPic.innerHTML = '<span class="muted">—</span>';
+        }
+        tr.appendChild(tdPic);
 
+        // Part #
         const tdPart = document.createElement("td");
         tdPart.textContent = item.partNumber || "";
         tr.appendChild(tdPart);
 
+        // Description (Col O)
         const tdDesc = document.createElement("td");
         tdDesc.textContent = item.description || "";
         tr.appendChild(tdDesc);
 
+        // Shop
         const tdShop = document.createElement("td");
         tdShop.textContent = item.shop || "";
+        tdShop.className = "shop-cell";
         tr.appendChild(tdShop);
 
         const tdShopQty = document.createElement("td");
@@ -1174,10 +1175,13 @@ tr.appendChild(tdPic);
         shopPill.className = `qty-pill ${qtyClass(item.shopQty)}`;
         shopPill.textContent = item.shopQty;
         tdShopQty.appendChild(shopPill);
+        tdShopQty.className = "shop-qty";
         tr.appendChild(tdShopQty);
 
+        // Van
         const tdVan = document.createElement("td");
         tdVan.textContent = item.van || "";
+        tdVan.className = "van-cell";
         tr.appendChild(tdVan);
 
         const tdVanQty = document.createElement("td");
@@ -1186,12 +1190,15 @@ tr.appendChild(tdPic);
         vanPill.className = `qty-pill ${qtyClass(vanQty)}`;
         vanPill.textContent = vanQty;
         tdVanQty.appendChild(vanPill);
+        tdVanQty.className = "van-qty";
         tr.appendChild(tdVanQty);
 
+        // Pins
         const tdPins = document.createElement("td");
         tdPins.textContent = item.pins || "";
         tr.appendChild(tdPins);
 
+        // Type
         const tdType = document.createElement("td");
         const tag = document.createElement("span");
         tag.className = "tag";
@@ -1199,16 +1206,18 @@ tr.appendChild(tdPic);
         tdType.appendChild(tag);
         tr.appendChild(tdType);
 
+        // Gender
         const tdGender = document.createElement("td");
-        const gNorm = normalizeGenderValue(item.gender);
-        tdGender.textContent =
-          gNorm === "female" ? "F" : gNorm === "male" ? "M" : gNorm.toUpperCase();
+        const g = String(item.gender || "").toLowerCase();
+        tdGender.textContent = g === "female" ? "F" : g === "male" ? "M" : "";
         tr.appendChild(tdGender);
 
+        // Supplier
         const tdMfr = document.createElement("td");
         tdMfr.textContent = item.manufacturer || "";
         tr.appendChild(tdMfr);
 
+        // Details row
         const detailsTr = document.createElement("tr");
         detailsTr.className = "details-row";
         detailsTr.style.display = "none";
@@ -1217,7 +1226,7 @@ tr.appendChild(tdPic);
         detailsTd.colSpan = 12;
         detailsTd.className = "details-cell";
 
-        const detailsGrid = createDetailsGrid(item.details || {});
+        const detailsGrid = createDetailsGrid(item.details || {}, item.altNumber);
         detailsTd.appendChild(detailsGrid);
         detailsTr.appendChild(detailsTd);
 
@@ -1242,7 +1251,7 @@ tr.appendChild(tdPic);
           }
         };
 
-        exp.addEventListener("click", (e) => {
+        exp.addEventListener("click", e => {
           e.stopPropagation();
           toggle();
           selectItem(item, tr);
@@ -1256,15 +1265,36 @@ tr.appendChild(tdPic);
         resultsBody.appendChild(tr);
         resultsBody.appendChild(detailsTr);
       });
+    }
 
-      resultsCount.textContent = `Showing ${totalCount} item${
-        totalCount === 1 ? "" : "s"
-      }`;
+    function renderPagedResults() {
+      const total = filteredData.length;
+      const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+      if (total === 0) {
+        renderResults([]);
+        resultsCount.textContent = "Showing 0 items";
+        pageInfo.textContent = "Page 0 of 0 · 0 items";
+        prevPageBtn.disabled = true;
+        nextPageBtn.disabled = true;
+        return;
+      }
+
+      if (currentPage > totalPages) currentPage = totalPages;
+      const start = (currentPage - 1) * PAGE_SIZE;
+      const pageItems = filteredData.slice(start, start + PAGE_SIZE);
+
+      renderResults(pageItems);
+
+      resultsCount.textContent = `Showing ${total} item${total !== 1 ? "s" : ""}`;
+      pageInfo.textContent = `Page ${currentPage} of ${totalPages} · ${total} item${total !== 1 ? "s" : ""}`;
+      prevPageBtn.disabled = currentPage <= 1;
+      nextPageBtn.disabled = currentPage >= totalPages;
     }
 
     function wireMultiDropdowns() {
       const toggles = document.querySelectorAll(".multi-select");
-      toggles.forEach((toggle) => {
+      toggles.forEach(toggle => {
         const filterName = toggle.getAttribute("data-filter-toggle");
         toggle.addEventListener("click", (e) => {
           e.stopPropagation();
@@ -1272,47 +1302,50 @@ tr.appendChild(tdPic);
           closeAllMultiMenus();
           if (!isOpen) {
             toggle.classList.add("open");
-            const menu = document.querySelector(
-              `.multi-select-menu[data-filter-menu="${filterName}"]`
-            );
+            const menu =
+              document.querySelector(`.multi-select-menu[data-filter-menu="${filterName}"]`);
             if (menu) menu.classList.add("open");
           }
         });
       });
 
-      document.querySelectorAll(".multi-select-menu").forEach((menu) => {
+      document.querySelectorAll(".multi-select-menu").forEach(menu => {
         menu.addEventListener("click", (e) => {
           e.stopPropagation();
         });
       });
 
-      document.addEventListener("click", () => closeAllMultiMenus());
+      document.addEventListener("click", () => {
+        closeAllMultiMenus();
+      });
+
       document.addEventListener("keydown", (e) => {
-        if (e.key === "Escape") closeAllMultiMenus();
+        if (e.key === "Escape") {
+          closeAllMultiMenus();
+        }
       });
     }
 
     function closeAllMultiMenus() {
-      document
-        .querySelectorAll(".multi-select")
-        .forEach((el) => el.classList.remove("open"));
-      document
-        .querySelectorAll(".multi-select-menu")
-        .forEach((el) => el.classList.remove("open"));
+      document.querySelectorAll(".multi-select").forEach(el => el.classList.remove("open"));
+      document.querySelectorAll(".multi-select-menu").forEach(el => el.classList.remove("open"));
     }
 
     function wireMultiCheckboxes() {
-      document.querySelectorAll(".multi-select-menu").forEach((menu) => {
+      document.querySelectorAll(".multi-select-menu").forEach(menu => {
         const filterName = menu.getAttribute("data-filter-menu");
-        menu.querySelectorAll('input[type="checkbox"]').forEach((cb) => {
+
+        menu.querySelectorAll('input[type="checkbox"]').forEach(cb => {
           cb.addEventListener("change", () => {
             const val = cb.value;
             const set = multiState[filterName];
             if (!set) return;
-            if (cb.checked) set.add(val);
-            else set.delete(val);
+            if (cb.checked) {
+              set.add(val);
+            } else {
+              set.delete(val);
+            }
             updateMultiLabel(filterName);
-            currentPage = 1;
             applyFilters();
           });
         });
@@ -1322,7 +1355,6 @@ tr.appendChild(tdPic);
           clearBtn.addEventListener("click", (e) => {
             e.stopPropagation();
             clearMultiSelect(filterName);
-            currentPage = 1;
             applyFilters();
           });
         }
@@ -1334,11 +1366,10 @@ tr.appendChild(tdPic);
       if (!set) return;
       set.clear();
 
-      const menu = document.querySelector(
-        `.multi-select-menu[data-filter-menu="${filterName}"]`
-      );
+      const menu =
+        document.querySelector(`.multi-select-menu[data-filter-menu="${filterName}"]`);
       if (menu) {
-        menu.querySelectorAll('input[type="checkbox"]').forEach((cb) => {
+        menu.querySelectorAll('input[type="checkbox"]').forEach(cb => {
           cb.checked = false;
         });
       }
@@ -1346,14 +1377,15 @@ tr.appendChild(tdPic);
     }
 
     function clearAllMultiSelects() {
-      Object.keys(multiState).forEach((key) => clearMultiSelect(key));
+      Object.keys(multiState).forEach(key => {
+        clearMultiSelect(key);
+      });
     }
 
     function restoreFilters() {
       try {
         const raw = localStorage.getItem(STORAGE_KEY);
         if (!raw) {
-          currentPage = 1;
           applyFilters();
           return;
         }
@@ -1363,31 +1395,29 @@ tr.appendChild(tdPic);
         locationFilter.value = state.location || "";
 
         if (state.multi && typeof state.multi === "object") {
-          Object.keys(multiState).forEach((filterName) => {
+          Object.keys(multiState).forEach(filterName => {
             const values = state.multi[filterName];
             if (!Array.isArray(values)) return;
             const set = new Set(values);
             multiState[filterName] = set;
 
-            const menu = document.querySelector(
-              `.multi-select-menu[data-filter-menu="${filterName}"]`
-            );
+            const menu =
+              document.querySelector(`.multi-select-menu[data-filter-menu="${filterName}"]`);
             if (menu) {
-              menu
-                .querySelectorAll('input[type="checkbox"]')
-                .forEach((cb) => {
-                  cb.checked = set.has(cb.value);
-                });
+              menu.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+                cb.checked = set.has(cb.value);
+              });
             }
             updateMultiLabel(filterName);
           });
         }
 
         hasPictureCheckbox.checked = !!state.hasPicture;
-        currentPage = 1;
+        hasTerminalsCheckbox.checked = !!state.hasTerminals;
+        stockFilter.value = state.stockFilter || "";
+
         applyFilters();
       } catch (e) {
-        currentPage = 1;
         applyFilters();
       }
     }
@@ -1403,7 +1433,7 @@ tr.appendChild(tdPic);
     async function loadData() {
       try {
         resultsCount.textContent = "Loading inventory…";
-        const res = await fetch(DATA_URL);
+        const res = await fetch(WEB_APP_URL);
         if (!res.ok) throw new Error("HTTP " + res.status);
         const data = await res.json();
 
@@ -1413,57 +1443,80 @@ tr.appendChild(tdPic);
 
         connectorData = data.items;
 
-        // Pins (Stats!A2:A)
+        // Pins
         if (Array.isArray(data.pinOptions)) {
-          const pinsMenu = document.querySelector(
-            '.multi-select-menu[data-filter-menu="pins"]'
-          );
-          const header = pinsMenu.querySelector(".multi-select-menu-header");
-          pinsMenu.innerHTML = "";
-          if (header) pinsMenu.appendChild(header);
-          const pinsSorted = [...data.pinOptions].sort((a, b) => {
-            const na = Number(a),
-              nb = Number(b);
-            if (!isNaN(na) && !isNaN(nb)) return na - nb;
-            return String(a).localeCompare(String(b));
-          });
-          pinsSorted.forEach((val) => {
-            if (!val) return;
-            const label = document.createElement("label");
-            const cb = document.createElement("input");
-            cb.type = "checkbox";
-            cb.value = val;
-            label.appendChild(cb);
-            label.appendChild(document.createTextNode(" " + val));
-            pinsMenu.appendChild(label);
-          });
+          const pinsMenu =
+            document.querySelector('.multi-select-menu[data-filter-menu="pins"]');
+          if (pinsMenu) {
+            const header = pinsMenu.querySelector(".multi-select-menu-header");
+            pinsMenu.innerHTML = "";
+            if (header) pinsMenu.appendChild(header);
+            const pinsSorted = [...data.pinOptions].sort((a, b) => {
+              const na = Number(a), nb = Number(b);
+              if (!isNaN(na) && !isNaN(nb)) return na - nb;
+              return String(a).localeCompare(String(b));
+            });
+            pinsSorted.forEach(val => {
+              if (!val) return;
+              const label = document.createElement("label");
+              const cb = document.createElement("input");
+              cb.type = "checkbox";
+              cb.value = val;
+              label.appendChild(cb);
+              label.appendChild(document.createTextNode(" " + val));
+              pinsMenu.appendChild(label);
+            });
+          }
         }
 
-        // Supplier list (Stats!E2:E)
+        // Supplier
         if (Array.isArray(data.manufacturerOptions)) {
-          const mMenu = document.querySelector(
-            '.multi-select-menu[data-filter-menu="manufacturer"]'
-          );
-          const header = mMenu.querySelector(".multi-select-menu-header");
-          mMenu.innerHTML = "";
-          if (header) mMenu.appendChild(header);
-          const mfrSorted = [...data.manufacturerOptions].sort((a, b) =>
-            String(a).localeCompare(String(b))
-          );
-          mfrSorted.forEach((val) => {
-            if (!val) return;
-            const label = document.createElement("label");
-            const cb = document.createElement("input");
-            cb.type = "checkbox";
-            cb.value = val;
-            label.appendChild(cb);
-            label.appendChild(document.createTextNode(" " + val));
-            mMenu.appendChild(label);
-          });
+          const mMenu =
+            document.querySelector('.multi-select-menu[data-filter-menu="manufacturer"]');
+          if (mMenu) {
+            const header = mMenu.querySelector(".multi-select-menu-header");
+            mMenu.innerHTML = "";
+            if (header) mMenu.appendChild(header);
+            const mfrSorted = [...data.manufacturerOptions].sort((a, b) =>
+              String(a).localeCompare(String(b))
+            );
+            mfrSorted.forEach(val => {
+              if (!val) return;
+              const label = document.createElement("label");
+              const cb = document.createElement("input");
+              cb.type = "checkbox";
+              cb.value = val;
+              label.appendChild(cb);
+              label.appendChild(document.createTextNode(" " + val));
+              mMenu.appendChild(label);
+            });
+          }
+        }
+
+        // Terminal Size options from Stats!S5:S150 (termSizeOptions)
+        if (Array.isArray(data.termSizeOptions)) {
+          const tMenu =
+            document.querySelector('.multi-select-menu[data-filter-menu="termSize"]');
+          if (tMenu) {
+            const header = tMenu.querySelector(".multi-select-menu-header");
+            tMenu.innerHTML = "";
+            if (header) tMenu.appendChild(header);
+            const tSorted = [...data.termSizeOptions]
+              .filter(Boolean)
+              .sort((a, b) => String(a).localeCompare(String(b), undefined, { numeric: true }));
+            tSorted.forEach(val => {
+              const label = document.createElement("label");
+              const cb = document.createElement("input");
+              cb.type = "checkbox";
+              cb.value = val;
+              label.appendChild(cb);
+              label.appendChild(document.createTextNode(" " + val));
+              tMenu.appendChild(label);
+            });
+          }
         }
 
         wireMultiCheckboxes();
-        currentPage = 1;
         restoreFilters();
       } catch (err) {
         console.error(err);
@@ -1472,14 +1525,14 @@ tr.appendChild(tdPic);
         const cell = document.createElement("td");
         cell.colSpan = 12;
         cell.className = "muted";
-        cell.textContent =
-          "Error loading data: " + (err.message || "Unknown error");
+        cell.textContent = "Error loading data: " + (err.message || "Unknown error");
         row.appendChild(cell);
         resultsBody.appendChild(row);
         resultsCount.textContent = "Error loading inventory";
       }
     }
 
+    // Request connector via hidden iframe (Chat webhook via Apps Script)
     runActionBtn.addEventListener("click", () => {
       if (!selectedItem) {
         actionStatus.textContent = "Select a connector first.";
@@ -1504,11 +1557,11 @@ tr.appendChild(tdPic);
           category: selectedItem.category || "",
           manufacturer: selectedItem.manufacturer || "",
           passNumber: selectedItem.passNumber || "",
-          source: "Connector Inventory Web",
+          source: "Connector Inventory Web"
         });
 
         params.append("ts", Date.now().toString());
-        const url = REQUEST_URL + "?" + params.toString();
+        const url = WEB_APP_URL + "?" + params.toString();
 
         let iframe = document.getElementById("requestFrame");
         if (!iframe) {
@@ -1525,19 +1578,14 @@ tr.appendChild(tdPic);
 
     const debouncedApply = debounce(applyFilters, 250);
     searchInput.addEventListener("input", debouncedApply);
-    locationFilter.addEventListener("input", () => {
-      currentPage = 1;
-      applyFilters();
-    });
-    hasPictureCheckbox.addEventListener("change", () => {
-      currentPage = 1;
-      applyFilters();
-    });
+    locationFilter.addEventListener("input", applyFilters);
+    hasPictureCheckbox.addEventListener("change", applyFilters);
+    hasTerminalsCheckbox.addEventListener("change", applyFilters);
+    stockFilter.addEventListener("change", applyFilters);
 
     clearSearchBtn.addEventListener("click", () => {
       searchInput.value = "";
       searchInput.focus();
-      currentPage = 1;
       applyFilters();
     });
 
@@ -1545,26 +1593,13 @@ tr.appendChild(tdPic);
       searchInput.value = "";
       locationFilter.value = "";
       hasPictureCheckbox.checked = false;
+      hasTerminalsCheckbox.checked = false;
+      stockFilter.value = "";
       clearAllMultiSelects();
-      currentPage = 1;
       applyFilters();
     });
 
-    prevPageBtn.addEventListener("click", () => {
-      if (currentPage > 1) {
-        currentPage--;
-        applyFilters();
-      }
-    });
-
-    nextPageBtn.addEventListener("click", () => {
-      if (currentPage < lastTotalPages) {
-        currentPage++;
-        applyFilters();
-      }
-    });
-
-    document.querySelectorAll("th.sortable").forEach((th) => {
+    document.querySelectorAll("th.sortable").forEach(th => {
       th.addEventListener("click", () => {
         const key = th.dataset.sort;
         if (currentSort.key === key) {
@@ -1573,9 +1608,23 @@ tr.appendChild(tdPic);
           currentSort.key = key;
           currentSort.dir = "asc";
         }
-        currentPage = 1;
         applyFilters();
       });
+    });
+
+    prevPageBtn.addEventListener("click", () => {
+      if (currentPage > 1) {
+        currentPage--;
+        renderPagedResults();
+      }
+    });
+
+    nextPageBtn.addEventListener("click", () => {
+      const totalPages = Math.max(1, Math.ceil(filteredData.length / PAGE_SIZE));
+      if (currentPage < totalPages) {
+        currentPage++;
+        renderPagedResults();
+      }
     });
 
     wireMultiDropdowns();
