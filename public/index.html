@@ -146,6 +146,65 @@
       letter-spacing: 0.08em;
     }
 
+    .header-left {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.title-row {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+
+.header-meta {
+  font-size: 0.8rem;
+  color: #6b7280;
+  white-space: nowrap;
+}
+
+/* --- Inline Page Tabs Beside the Title --- */
+
+.page-tabs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.tab {
+  display: inline-block;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  text-decoration: none;
+
+  background: #f9fafb;
+  color: #374151;
+  border: 1px solid rgba(148, 163, 184, 0.5);
+
+  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.07);
+  transition: background .15s ease, color .15s ease, 
+              border-color .15s ease, box-shadow .15s ease;
+}
+
+.tab:hover {
+  background: #e0edff;
+  color: #1d4ed8;
+  border-color: #93c5fd;
+  box-shadow: 0 6px 14px rgba(37, 99, 235, 0.18);
+}
+
+.tab.active {
+  background: #dbeafe;
+  color: #1d4ed8;
+  border-color: #60a5fa;
+  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.25);
+}
+
+
     /* Fields / inputs in sidebar */
     .field {
       display: flex;
