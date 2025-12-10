@@ -11,6 +11,58 @@
       height: 100%;
     }
 
+    /* --- Top Navigation Bar (Matches Inventory UI) --- */
+
+.top-nav {
+  width: calc(100% - 48px);
+  margin: 16px auto 0 auto;
+  padding: 10px 20px;
+
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 14px;
+
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+
+  display: flex;
+  gap: 24px;
+  align-items: center;
+
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.15);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.top-nav .nav-item {
+  color: #1e293b;
+  text-decoration: none;
+  font-size: 0.92rem;
+  font-weight: 500;
+
+  padding: 6px 10px;
+  border-radius: 8px;
+
+  transition: all 0.2s ease;
+}
+
+/* Hover effect */
+.top-nav .nav-item:hover {
+  background: #e0edff;
+  color: #1d4ed8;
+}
+
+/* Active page highlight */
+.top-nav .nav-item.active {
+  background: #dbeafe;
+  color: #1d4ed8;
+  font-weight: 600;
+  border: 1px solid #93c5fd;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.25);
+}
+
+
     body {
       margin: 0;
       font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
@@ -659,6 +711,13 @@
   </style>
 </head>
 <body>
+
+  <nav class="top-nav">
+    <a href="/index.html" class="nav-item">Inventory Search</a>
+    <a href="/terminal-database.html" class="nav-item">Terminal Database</a>
+    <a href="/connector-data.html" class="nav-item">Connector Data</a>
+  </nav>
+
   <div class="page">
     <!-- LEFT FILTER PANEL -->
     <aside class="filters-panel">
@@ -2094,5 +2153,15 @@
     wireMultiDropdowns();
     loadData();
   </script>
+  <script>
+  const current = window.location.pathname.replace("/", "");
+  document.querySelectorAll(".top-nav .nav-item").forEach(link => {
+    const href = link.getAttribute("href").replace("/", "");
+    if (href === current || (href === "index.html" && current === "")) {
+      link.classList.add("active");
+    }
+  });
+</script>
+
 </body>
 </html>
